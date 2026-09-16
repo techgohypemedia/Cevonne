@@ -29,7 +29,7 @@ const contentSecurityPolicy = [
   "object-src 'none'",
   // Next.js includes framework bootstrap scripts inline. Rich-text input is separately
   // sanitized on both client and server to keep this compatibility allowance narrow.
-  "script-src 'self' 'unsafe-inline'",
+  `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
   "upgrade-insecure-requests",
 ].join("; ");
