@@ -20,17 +20,16 @@ try {
 const contentSecurityPolicy = [
   "default-src 'self'",
   "base-uri 'self'",
-  "connect-src 'self' https://*.supabase.co https://*.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com",
-  "font-src 'self' data: https:",
+  "connect-src 'self' https://*.supabase.co https://*.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://cdn.jsdelivr.net https://unpkg.com",
+  "font-src 'self' data: https: https://fonts.gstatic.com",
   "form-action 'self'",
   "frame-ancestors 'none'",
   "img-src 'self' data: blob: https://cdn.cevonne.com https://*.r2.dev",
   "media-src 'self' blob: https://cdn.cevonne.com https://*.r2.dev",
   "object-src 'none'",
-  // Next.js includes framework bootstrap scripts inline. Rich-text input is separately
-  // sanitized on both client and server to keep this compatibility allowance narrow.
-  `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ""}`,
-  "style-src 'self' 'unsafe-inline'",
+  `script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ""}`,
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "worker-src 'self' blob:",
   "upgrade-insecure-requests",
 ].join("; ");
 
@@ -39,7 +38,7 @@ const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "DENY" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()" },
+  { key: "Permissions-Policy", value: "camera=(self), microphone=(), geolocation=(), payment=(), usb=()" },
   { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
 ];
 
@@ -70,11 +69,16 @@ const nextConfig = {
     remotePatterns: r2RemotePatterns,
   },
   turbopack: {
-    // Keep module resolution and file watching scoped to this app.
-    root: projectRoot,
     resolveAlias: {
       "react-router-dom": "./lib/router.tsx",
     },
+  },
+  webpack: (config) => {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      "react-router-dom": path.resolve(projectRoot, "lib/router.tsx"),
+    };
+    return config;
   },
   async headers() {
     return [

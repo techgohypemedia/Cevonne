@@ -413,7 +413,7 @@ function ArShadeDialog({ open, onOpenChange, shade, products = [], request, refr
             </div>
             <div className="space-y-2">
               <Label htmlFor="ar-code">AR code</Label>
-              <Input id="ar-code" placeholder="E.g. 601" {...register("arCode")} />
+              <Input id="ar-code" placeholder="E.g. 23, 102, 105" {...register("arCode")} />
             </div>
           </div>
 

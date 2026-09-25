@@ -135,10 +135,18 @@ export default function ShadesPage() {
                       {shade.color === "transparent" ? "Ø" : ""}
                     </span>
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-foreground">{shade.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {shade.code ? `Code ${shade.code}` : "No code"}
+                      <p className="truncate text-sm font-semibold text-foreground">
+                        {shade.code ? `#${shade.code} ${shade.name}` : shade.name}
                       </p>
+                      <p className="text-xs text-muted-foreground">
+                        {shade.finish}
+                        {shade.pantone ? ` • ${shade.pantone}` : ""}
+                      </p>
+                      {shade.category && shade.category !== "Bare Lips" ? (
+                        <p className="text-[10px] text-muted-foreground/80 truncate">
+                          {shade.category} {shade.effect ? `(${shade.effect})` : ""}
+                        </p>
+                      ) : null}
                     </div>
                   </div>
                 ))}

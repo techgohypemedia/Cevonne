@@ -7,6 +7,9 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 
 import { useShop } from "@/context/ShopContext";
+import { LIPSTICK_SHADES, type ArShade } from "@/data/arShades";
+
+
 
 type LandmarkPoint = {
   x: number;
@@ -26,72 +29,6 @@ type BoundingBox = {
   w: number;
   h: number;
 };
-
-
-
-/* ========================================================================
-
-   PREMIUM AR LIPSTICK ENGINE G UI FIX v11 (SPACING CORRECTED)
-
-   ======================================================================== */
-
-
-
-/* =============================== SHADES ================================== */
-
-const LIPSTICK_SHADES = [
-
-  { id: 0, code: null, name: "Natural Finish", color: "transparent" },
-
-  { id: 1, code: "601", name: "Scarlet Siren", color: "#B82229" },
-
-  { id: 2, code: "602", name: "Rouge Eternelle", color: "#8D1D27" },
-
-  { id: 3, code: "603", name: "Power Play", color: "#631820" },
-
-  { id: 4, code: "604", name: "Spiced Silk", color: "#A64D3E" },
-
-  { id: 5, code: "605", name: "Bare Bloom", color: "#D18A68" },
-
-  { id: 6, code: "606", name: "Peach Tantra", color: "#F2A36E" },
-
-  { id: 7, code: "607", name: "Rose Flame", color: "#C95A6C" },
-
-  { id: 8, code: "608", name: "Whisper Nude", color: "#C79082" },
-
-  { id: 9, code: "609", name: "Bloom Creme", color: "#D24E71" },
-
-  { id: 10, code: "610", name: "Berry Amour", color: "#8A3832" },
-
-  { id: 11, code: "611", name: "Cinnamon Saffron", color: "#B64A29" },
-
-  { id: 12, code: "612", name: "Oud Royale", color: "#431621" },
-
-  { id: 13, code: "613", name: "Velvet Crush", color: "#C22A2D" },
-
-  { id: 14, code: "614", name: "Spiced Ember", color: "#A03529" },
-
-  { id: 15, code: "615", name: "Creme Blush", color: "#CF5F4C" },
-
-  { id: 16, code: "616", name: "Caramel Eclair", color: "#C77444" },
-
-  { id: 17, code: "617", name: "Rose Fantasy", color: "#C25D6A" },
-
-  { id: 18, code: "618", name: "Mauve Memoir", color: "#A86267" },
-
-  { id: 19, code: "619", name: "Rouge Mistral", color: "#94373F" },
-
-  { id: 20, code: "620", name: "Flushed Fig", color: "#9A4140" },
-
-  { id: 21, code: "621", name: "Terracotta Dream", color: "#C5552F" },
-
-  { id: 22, code: "622", name: "Nude Myth", color: "#AF705A" },
-
-  { id: 23, code: "623", name: "Runway Rani", color: "#D13864" },
-
-];
-
-
 
 const PRODUCT_LINE_LABEL = "Cevonne Luxe";
 
@@ -247,20 +184,32 @@ const HANDS_URLS = [
 
 
 
-function formatShadeLine(shade) {
-
+function formatShadeLine(shade: any) {
   const displayName = shade.id === 0 ? "Natural Finish" : shade.name;
-
   const code =
-
     shade.code && String(shade.code).trim().length
-
       ? String(shade.code).trim()
-
       : null;
+  return code ? `${code} · ${displayName}` : displayName;
+}
 
-  return code ? `${code} - ${displayName}` : displayName;
+function getShadeCollectionLine(shade: any) {
+  if (!shade || shade.id === 0) return "Cevonne - Natural Lip";
+  let col = "Velvet Couture";
+  let fin = "Satin Crème";
+  if (shade.category?.includes("Air") || shade.productLine === "Liquid") {
+    col = "Air Couture";
+    fin = "Matte";
+  } else if (shade.category?.includes("Glass") || shade.productLine === "Gloss") {
+    col = "Glass Veil";
+    fin = "High-Shine Gloss";
+  }
+  return shade.code ? `${col} - ${fin} - ${shade.code}` : `${col} - ${fin}`;
+}
 
+function getShadeNameLine(shade: any) {
+  if (!shade || shade.id === 0) return "Natural Finish";
+  return shade.code ? `${shade.code} - ${shade.name}` : shade.name;
 }
 
 
@@ -1144,19 +1093,18 @@ export default function VirtualTryOn() {
 
 
   const leftColorRef = useRef(leftShade.color);
-
   const rightColorRef = useRef(rightShade.color);
+  const leftShadeRef = useRef<ArShade>(leftShade);
+  const rightShadeRef = useRef<ArShade>(rightShade);
 
   useEffect(() => {
-
     leftColorRef.current = leftShade.color;
-
+    leftShadeRef.current = leftShade;
   }, [leftShade]);
 
   useEffect(() => {
-
     rightColorRef.current = rightShade.color;
-
+    rightShadeRef.current = rightShade;
   }, [rightShade]);
 
 
@@ -1876,148 +1824,164 @@ export default function VirtualTryOn() {
 
 
 
-    const tintOnCtx = (targetCtx, color, drawOuter, drawInner, w, h) => {
-
+    const tintOnCtx = (targetCtx, shadeOrColor, drawOuter, drawInner, w, h) => {
       if (!drawOuter || !drawInner) return;
+      const shadeObj = typeof shadeOrColor === "object" ? shadeOrColor : null;
+      const color = shadeObj ? shadeObj.color : shadeOrColor;
+      if (!color || color === "transparent") return;
+
+      const finish = shadeObj?.finish || "";
+      const isGloss = finish === "High-Shine Gloss" || shadeObj?.category?.includes("Glass Veil") || finish.includes("Gloss");
+      const isSatinMatte = finish === "Satin Crème Matte" || shadeObj?.category?.includes("Velvet Couture");
+      const isLiquidMatte = !isGloss && !isSatinMatte;
 
       const bbox = computeBBox(drawOuter);
-
+      const extraPad = isGloss ? 4 : 0;
       const pad = Math.min(
-
-        MAX_BBOX_PAD,
-
-        Math.max(2, Math.round(Math.max(bbox.w, bbox.h) * 0.06))
-
+        MAX_BBOX_PAD + extraPad,
+        Math.max(2, Math.round(Math.max(bbox.w, bbox.h) * 0.06)) + extraPad
       );
-
       const bx = Math.max(0, Math.floor(bbox.x - pad));
-
       const by = Math.max(0, Math.floor(bbox.y - pad));
-
       const bw = Math.min(w - bx, Math.ceil(bbox.w + pad * 2));
-
       const bh = Math.min(h - by, Math.ceil(bbox.h + pad * 2));
 
-
-
       const sx = Math.floor(bx * DPR);
-
       const sy = Math.floor(by * DPR);
-
       const sw = Math.max(1, Math.floor(bw * DPR));
-
       const sh = Math.max(1, Math.floor(bh * DPR));
-
       const frame = targetCtx.getImageData(sx, sy, sw, sh);
 
-
-
       mCanvas.width = sw;
-
       mCanvas.height = sh;
-
       const mctx = mCanvas.getContext("2d", { willReadFrequently: true });
-
       if (!mctx) return;
-
       mctx.setTransform(1, 0, 0, 1, 0, 0);
-
       mctx.clearRect(0, 0, sw, sh);
-
       mctx.save();
 
       const toDevice = (p) => ({ x: (p.x - bx) * DPR, y: (p.y - by) * DPR });
-
       const outerD = (drawOuter || []).map(toDevice);
-
       const innerD = (drawInner || []).map(toDevice);
 
-      const maskPath = makePathFromRings(outerD, innerD);
+      // Centroid for plump geometry expansion
+      let cx = 0, cy = 0;
+      for (const p of outerD) {
+        cx += p.x;
+        cy += p.y;
+      }
+      cx /= Math.max(1, outerD.length);
+      cy /= Math.max(1, outerD.length);
 
+      // Plumping effect: slightly cushion lip boundary for gloss
+      const adjustedOuterD = isGloss
+        ? outerD.map((p) => {
+            const dx = p.x - cx;
+            const dy = p.y - cy;
+            const dist = Math.hypot(dx, dy);
+            if (dist < 0.1) return p;
+            const pushX = (dx / dist) * (1.1 * DPR);
+            const pushY = (dy / dist) * (1.6 * DPR);
+            return { x: p.x + pushX, y: p.y + pushY };
+          })
+        : outerD;
 
+      const maskPath = makePathFromRings(adjustedOuterD, innerD);
 
       let rawFeather = Math.max(
-
         1.2,
-
         Math.min(2.6, Math.max(bw * DPR, bh * DPR) * 0.005)
-
       );
-
-      rawFeather *= 1 + SOFT_EDGE_BOOST;
-
+      rawFeather *= (1 + SOFT_EDGE_BOOST) * (isGloss ? 1.25 : 1.0);
       if (edgeFeatherEmaRef.current == null) edgeFeatherEmaRef.current = rawFeather;
-
       const edgeFeatherPx = (edgeFeatherEmaRef.current =
-
         edgeFeatherEmaRef.current * (1 - FEATHER_EMA_ALPHA) +
-
         rawFeather * FEATHER_EMA_ALPHA);
 
-
-
       mctx.filter = `blur(${edgeFeatherPx}px)`;
-
       mctx.fillStyle = "#fff";
-
       mctx.fill(maskPath, "evenodd");
-
       mctx.restore();
-
       const mask = mctx.getImageData(0, 0, sw, sh);
 
-
-
       const { r: tr, g: tg, b: tb } = hexToRgb(color);
-
       const thsl = rgbToHsl(tr, tg, tb);
-
       const data = frame.data;
-
       const mdata = mask.data;
 
-
+      // Finish optical parameters:
+      // Gloss: juicy translucent base (0.65) with high-shine wet glazes
+      // Satin Crème Matte: rich creamy coverage (0.80) with soft satin glow
+      // Matte: velvety full coverage (0.88) with diffused soft-focus highlights
+      const baseOpacityVal = isGloss ? 0.65 : (isSatinMatte ? 0.80 : 0.88);
+      const shadowBoostVal = isGloss ? 0.10 : (isSatinMatte ? 0.18 : 0.22);
+      const lowerLipY = cy + bh * DPR * 0.18;
+      const cupidBowY = cy - bh * DPR * 0.14;
+      const lipRadiusX = Math.max(1, bw * DPR * 0.36);
+      const lipRadiusY = Math.max(1, bh * DPR * 0.16);
 
       for (let i = 0; i < data.length; i += 4) {
-
         const ma = (mdata[i + 3] / 255) * tintAlphaRef.current;
-
         if (ma < 0.01) continue;
 
-
-
         const r = data[i];
-
         const g = data[i + 1];
-
         const b = data[i + 2];
 
-
-
         const { l } = rgbToHsl(r, g, b);
+        let shadeL = l * 0.96 + 0.02;
 
-        const shadeL = l * 0.96 + 0.02;
+        if (isLiquidMatte) {
+          shadeL = Math.min(l * 0.90 + 0.05, 0.62);
+        } else if (isGloss) {
+          shadeL = l * 0.98 + 0.01;
+        }
 
-
-
-        const a = clamp01(BASE_OPACITY + SHADOW_BOOST * (0.5 - l)) * ma;
-
-
-
+        const a = clamp01(baseOpacityVal + shadowBoostVal * (0.5 - l)) * ma;
         const nrgb = hslToRgb(thsl.h, thsl.s * LIP_SAT_TRIM, shadeL);
 
+        let outR = Math.round(nrgb.r * a + r * (1 - a));
+        let outG = Math.round(nrgb.g * a + g * (1 - a));
+        let outB = Math.round(nrgb.b * a + b * (1 - a));
 
+        if (isGloss) {
+          // 1. Specular shine reflection from camera lighting
+          const specular = Math.pow(Math.max(0, (l - 0.36) / 0.64), 2.2) * 0.75;
 
-        data[i] = Math.round(nrgb.r * a + r * (1 - a));
+          // 2. Wet plump gloss gleam centered on lower cushion and cupid's bow
+          const px = (i / 4) % sw;
+          const py = Math.floor((i / 4) / sw);
 
-        data[i + 1] = Math.round(nrgb.g * a + g * (1 - a));
+          const dLower = Math.hypot((px - cx) / lipRadiusX, (py - lowerLipY) / lipRadiusY);
+          const lowerPlumpShine = Math.max(0, 1 - dLower) * 0.40;
 
-        data[i + 2] = Math.round(nrgb.b * a + b * (1 - a));
+          const dUpper = Math.hypot((px - cx) / (lipRadiusX * 0.7), (py - cupidBowY) / (lipRadiusY * 0.8));
+          const cupidShine = Math.max(0, 1 - dUpper) * 0.30;
 
+          const totalShine = Math.min(1.0, specular + lowerPlumpShine + cupidShine) * ma;
+
+          if (totalShine > 0.02) {
+            const glossWhite = totalShine * 175;
+            outR = Math.min(255, Math.round(outR + glossWhite));
+            outG = Math.min(255, Math.round(outG + glossWhite * 0.96));
+            outB = Math.min(255, Math.round(outB + glossWhite * 0.93));
+          }
+        } else if (isSatinMatte) {
+          // Soft satin micro-sheen
+          const satinGleam = Math.pow(Math.max(0, l - 0.48), 1.6) * 38 * ma;
+          if (satinGleam > 0.5) {
+            outR = Math.min(255, Math.round(outR + satinGleam));
+            outG = Math.min(255, Math.round(outG + satinGleam * 0.92));
+            outB = Math.min(255, Math.round(outB + satinGleam * 0.90));
+          }
+        }
+
+        data[i] = outR;
+        data[i + 1] = outG;
+        data[i + 2] = outB;
       }
 
       targetCtx.putImageData(frame, sx, sy);
-
     };
 
 
@@ -2668,52 +2632,29 @@ export default function VirtualTryOn() {
 
           if (drawOuter && drawInner) {
 
-            const lc = leftColorRef.current;
+            const ls = leftShadeRef.current;
+            const rs = rightShadeRef.current;
 
-            const rc = rightColorRef.current;
-
-
-
-            if (lc !== "transparent") {
-
-              tintOnCtx(tintLeftCtx, lc, drawOuter, drawInner, w, h);
-
+            if (ls && ls.color !== "transparent") {
+              tintOnCtx(tintLeftCtx, ls, drawOuter, drawInner, w, h);
             }
 
-
-
-            let rightTint: string | null = null;
-
+            let rightShadeToUse: ArShade | null = null;
             if (!compareEnabledRef.current) {
-
-              rightTint = lc !== "transparent" ? lc : null;
-
-            } else if (hasSecondShadeRef.current && rc !== "transparent") {
-
-              rightTint = rc;
-
+              rightShadeToUse = ls && ls.color !== "transparent" ? ls : null;
+            } else if (hasSecondShadeRef.current && rs && rs.color !== "transparent") {
+              rightShadeToUse = rs;
             }
 
-
-
-            if (rightTint) {
-
+            if (rightShadeToUse) {
               tintOnCtx(
-
                 tintRightCtx,
-
-                rightTint,
-
+                rightShadeToUse,
                 drawOuter,
-
                 drawInner,
-
                 w,
-
                 h
-
               );
-
             }
 
           }
@@ -3499,193 +3440,91 @@ export default function VirtualTryOn() {
 
             {/* GRADIENT BACKGROUND */}
 
-            <div className="absolute bottom-0 left-0 right-0 h-[45vh] bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none" />
+            <div className="absolute bottom-0 left-0 right-0 h-[28vh] bg-gradient-to-t from-black/90 via-black/40 to-transparent pointer-events-none" />
 
 
 
             {/* Changed: pb-safe for iPhone home bar */}
 
-            <div className="relative w-full pb-[calc(1rem+env(safe-area-inset-bottom))] pt-2">
+            <div className="relative w-full pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-2">
 
-              {/* Minimise / expand tray */}
-
-              <div className="absolute top-0 right-4 z-20 pointer-events-auto">
-
-                <button
-
-                  onClick={() => setIsPanelMinimized((v) => !v)}
-
-                  className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition-all border border-white/5 shadow-lg backdrop-blur-md"
-
+              {/* SHADE STRIP (CENTERED HORIZONTAL SWIPER) */}
+              <div className="relative w-full h-24 mb-1 z-10">
+                <div
+                  ref={shadeScrollerRef}
+                  className="absolute inset-0 flex items-center gap-4 px-[50vw] overflow-x-auto hide-scrollbar snap-x snap-center py-3"
+                  style={{ scrollBehavior: "smooth" }}
                 >
-
-                  <svg
-
-                    className={`w-5 h-5 text-white/90 transition-transform duration-300 ${isPanelMinimized ? "rotate-180" : ""
-
-                      }`}
-
-                    fill="none"
-
-                    viewBox="0 0 24 24"
-
-                    stroke="currentColor"
-
-                  >
-
-                    <path
-
-                      strokeLinecap="round"
-
-                      strokeLinejoin="round"
-
-                      strokeWidth={2}
-
-                      d="M19 9l-7 7-7-7"
-
-                    />
-
-                  </svg>
-
-                </button>
-
-              </div>
-
-
-
-              {/* HEADER / LABELS */}
-
-              <div className="flex flex-col items-center justify-center px-6 mb-2 relative z-10">
-
-                {!compareEnabled && (
-
-                  <>
-
-                    <div className="text-[10px] font-bold text-white/50 uppercase tracking-[0.2em] mb-1">
-
-                      {PRODUCT_LINE_LABEL}
-
-                    </div>
-
-                    <div className="text-xl font-light text-white tracking-wide truncate max-w-[240px] md:max-w-[300px] text-center drop-shadow-md">
-
-                      {formatShadeLine(baseShade)}
-
-                    </div>
-
-                  </>
-
-                )}
-
-
-
-                {compareEnabled && !isPanelMinimized && (
-
-                  <>
-
-                    <div className="text-[10px] md:text-xs font-medium text-white/70 uppercase tracking-[0.18em] mb-1">
-
-                      Select a shade to compare
-
-                    </div>
-
-                    <div className="text-[10px] text-white/60 text-center">
-
-                      {hasSecondShade
-
-                        ? formatShadeLine(rightShade)
-
-                        : "Tap a shade below"}
-
-                    </div>
-
-                  </>
-
-                )}
-
-
-
-                {compareEnabled && isPanelMinimized && hasSecondShade && (
-
-                  <div className="flex items-center gap-2 text-[11px] text-white/70">
-
-                    <span className="truncate max-w-[120px]">{displayLeftLine}</span>
-
-                    <span className="opacity-40">-+</span>
-
-                    <span className="truncate max-w-[120px]">{displayRightLine}</span>
-
-                  </div>
-
-                )}
-
-              </div>
-
-
-
-              {/* SHADE STRIP */}
-
-              <div
-
-                className={`overflow-hidden transition-all duration-500 ease-in-out relative z-10 ${isPanelMinimized
-
-                  ? "max-h-0 opacity-0"
-
-                  : "max-h-[260px] opacity-100"
-
-                  }`}
-
-              >
-                <div className="relative w-full h-24 mb-1">
-                  <div
-                    ref={shadeScrollerRef}
-                    className="absolute inset-0 flex items-center gap-4 px-[50vw] overflow-x-auto hide-scrollbar snap-x snap-center py-3"
-                    style={{ scrollBehavior: "smooth" }}
-                  >
-                    {LIPSTICK_SHADES.map((shade) => {
-                      const isActive =
-                        (!compareEnabled && baseShade.id === shade.id) ||
-                        (compareEnabled &&
-
-                          hasSecondShade &&
-
-                          rightShade.id === shade.id);
-
-
-
-                      return (
-
-                        <button
-
-                          key={shade.id}
-                          ref={(el) => {
-                            shadeButtonsRef.current[shade.id] = el;
+                  {LIPSTICK_SHADES.map((shade) => {
+                    const isActive =
+                      (!compareEnabled && baseShade.id === shade.id) ||
+                      (compareEnabled &&
+                        hasSecondShade &&
+                        rightShade.id === shade.id);
+
+                    return (
+                      <button
+                        key={shade.id}
+                        ref={(el) => {
+                          shadeButtonsRef.current[shade.id] = el;
+                        }}
+                        onClick={() => handleShadeSelect(shade)}
+                        title={formatShadeLine(shade)}
+                        className={`relative flex-shrink-0 rounded-full overflow-hidden transition-all duration-300 snap-center group focus:outline-none cursor-pointer ${
+                          isActive
+                            ? "w-14 h-14 md:w-16 md:h-16 ring-2 ring-white ring-offset-2 ring-offset-transparent shadow-xl scale-110"
+                            : "w-12 h-12 md:w-14 md:h-14 opacity-80 hover:opacity-100 hover:scale-105"
+                        }`}
+                        style={{ borderRadius: "50%" }}
+                      >
+                        <div
+                          className="w-full h-full rounded-full border border-white/20 shadow-inner flex items-center justify-center relative overflow-hidden"
+                          style={{
+                            backgroundColor:
+                              shade.color === "transparent" ? "#333" : shade.color,
+                            borderRadius: "50%",
                           }}
-                          onClick={() => handleShadeSelect(shade)}
-                          className={`relative flex-shrink-0 rounded-full overflow-hidden transition-all duration-300 snap-center group ${isActive
-                              ? "w-14 h-14 md:w-16 md:h-16 ring-2 ring-white ring-offset-2 ring-offset-transparent shadow-xl scale-110"
-                              : "w-12 h-12 md:w-14 md:h-14 opacity-75 hover:opacity-100 hover:scale-105"
-                            }`}
-                          style={{ borderRadius: "50%" }}
                         >
-                          <div
-                            className="w-full h-full rounded-full border border-white/15 shadow-inner"
-                            style={{
-                              backgroundColor:
-                                shade.color === "transparent" ? "#333" : shade.color,
-                              borderRadius: "50%",
-                            }}
-                          />
-                          {shade.id === 0 && (
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <div className="w-4 h-[1px] bg-white/50 -rotate-45" />
-                            </div>
+                          {/* Specular gloss sheen overlay on Gloss swatch */}
+                          {shade.productLine === "Gloss" && (
+                            <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/30 to-transparent pointer-events-none" />
                           )}
-                        </button>
-                      );
-                    })}
-                  </div>
+
+                          {shade.id === 0 ? (
+                            <div className="w-4 h-[1px] bg-white/50 -rotate-45" />
+                          ) : (
+                            <span className="text-[10px] md:text-[11px] font-bold text-white tracking-tight drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)] select-none">
+                              {shade.code}
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
+              </div>
+
+              {/* DETAILS UNDER CIRCLES */}
+              <div className="flex flex-col items-center justify-center px-4 mb-2 relative z-10 text-center select-none pointer-events-none">
+                {!compareEnabled ? (
+                  <>
+                    <p className="text-[12px] md:text-[13px] font-normal text-white/80 tracking-wide drop-shadow-[0_1px_3px_rgba(0,0,0,0.85)] leading-tight mb-0.5">
+                      {getShadeCollectionLine(baseShade)}
+                    </p>
+                    <p className="text-[12px] md:text-[13px] font-normal text-white/95 tracking-wide drop-shadow-[0_1px_3px_rgba(0,0,0,0.85)] leading-tight">
+                      {getShadeNameLine(baseShade)}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-[11px] md:text-[12px] font-medium text-white/75 uppercase tracking-[0.16em] mb-0.5 drop-shadow-[0_1px_3px_rgba(0,0,0,0.85)]">
+                      {hasSecondShade ? "Split-Screen Comparison" : "Tap a second shade to compare"}
+                    </p>
+                    <p className="text-[12px] md:text-[13px] font-normal text-white/95 tracking-wide drop-shadow-[0_1px_3px_rgba(0,0,0,0.85)]">
+                      {getShadeNameLine(baseShade)} {hasSecondShade ? `vs ${getShadeNameLine(rightShade)}` : ""}
+                    </p>
+                  </>
+                )}
               </div>
 
 
