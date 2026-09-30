@@ -743,9 +743,7 @@ function initFaceMeshIfReady(faceMeshRef, latestResultsRef, lastGoodLandmarksRef
   if (faceMeshRef.current || !window.FaceMesh) return false;
 
   const faceMesh = new window.FaceMesh({
-
-    locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}`,
-
+    locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4/${f}`,
   });
 
   faceMesh.setOptions({
@@ -787,9 +785,7 @@ function initHandsIfReady(handsRef, latestHandsRef) {
   if (handsRef.current || !window.Hands) return false;
 
   const hands = new window.Hands({
-
-    locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`,
-
+    locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4/${f}`,
   });
 
   hands.setOptions({
@@ -2069,16 +2065,19 @@ export default function VirtualTryOn() {
 
 
       // PREMIUM CAMERA FILTER
-
       if (video.readyState >= 2) {
-
         backCtx.filter = "contrast(1.1) saturate(1.2) blur(0.5px)";
-
         backCtx.drawImage(video, 0, 0, w, h);
-
         backCtx.filter = "none";
-
       }
+
+      // Ensure buffers always receive camera frame even before first landmark detection
+      tintLeftCtx.setTransform(1, 0, 0, 1, 0, 0);
+      tintRightCtx.setTransform(1, 0, 0, 1, 0, 0);
+      tintLeftCtx.clearRect(0, 0, tintLeft.width, tintLeft.height);
+      tintRightCtx.clearRect(0, 0, tintRight.width, tintRight.height);
+      tintLeftCtx.drawImage(backCanvas, 0, 0);
+      tintRightCtx.drawImage(backCanvas, 0, 0);
 
 
 

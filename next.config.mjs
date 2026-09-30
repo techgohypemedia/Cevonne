@@ -20,16 +20,16 @@ try {
 const contentSecurityPolicy = [
   "default-src 'self'",
   "base-uri 'self'",
-  "connect-src 'self' https://*.supabase.co https://*.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://cdn.jsdelivr.net https://unpkg.com",
+  "connect-src 'self' https://*.supabase.co https://*.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://cdn.jsdelivr.net https://*.jsdelivr.net https://unpkg.com blob: data:",
   "font-src 'self' data: https: https://fonts.gstatic.com",
   "form-action 'self'",
   "frame-ancestors 'none'",
-  "img-src 'self' data: blob: https://cdn.cevonne.com https://*.r2.dev",
+  "img-src 'self' data: blob: https://cdn.cevonne.com https://*.r2.dev https://cdn.jsdelivr.net https://*.jsdelivr.net",
   "media-src 'self' blob: https://cdn.cevonne.com https://*.r2.dev",
   "object-src 'none'",
-  `script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ""}`,
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' https://cdn.jsdelivr.net https://*.jsdelivr.net https://unpkg.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "worker-src 'self' blob:",
+  "worker-src 'self' blob: https://cdn.jsdelivr.net https://*.jsdelivr.net https://unpkg.com",
   "upgrade-insecure-requests",
 ].join("; ");
 
