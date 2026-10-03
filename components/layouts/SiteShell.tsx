@@ -6,6 +6,7 @@ import MobileTopBar from "@/components/MobileTopBar";
 import Navbar from "@/components/Navbar";
 import ShopDrawer from "@/components/ShopDrawer";
 import CevonneAttributionTracker from "@/components/CevonneAttributionTracker";
+import FloatingVideoWidget from "@/components/media/FloatingVideoWidget";
 import { useLocation } from "@/lib/router";
 
 const HIDE_FOOTER_PATHS = new Set(["/cart", "/checkout"]);
@@ -25,6 +26,7 @@ export default function SiteShell({ children }) {
       {!isAccountRoute && <ShopDrawer />}
       {!shouldHideFooter && !isAccountRoute && <Footer />}
       {!isAccountRoute && <MobileBottomNav />}
+      {!isAccountRoute && <FloatingVideoWidget />}
     </main>
   );
 }

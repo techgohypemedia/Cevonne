@@ -1,0 +1,13 @@
+{
+  "id": "default-floating-video",
+  "title": "Glow & Groom",
+  "badgeText": "LIVE",
+  "showBadge": true,
+  "videoUrl": "/assets/video/intro1.mp4",
+  "sourceType": "link",
+  "targetUrl": "/collections",
+  "buttonLabel": "Shop Now",
+  "isEnabled": true,
+  "displayScope": "all",
+  "updatedAt": "2026-10-03T10:30:00.000Z"
+}
