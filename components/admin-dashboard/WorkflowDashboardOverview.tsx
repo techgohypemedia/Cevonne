@@ -127,7 +127,11 @@ function WorkflowCard({ workflow }: { workflow: WorkflowOverviewCard }) {
   );
 }
 
-export default function WorkflowDashboardOverview() {
+export default function WorkflowDashboardOverview({
+  withoutShell = false,
+}: {
+  withoutShell?: boolean;
+} = {}) {
   const { authFetch } = useAuth();
   const request = authFetch;
 
@@ -231,13 +235,32 @@ export default function WorkflowDashboardOverview() {
     },
   ];
 
-  return (
-    <WorkflowDashboardShell
-      eyebrow="Cevonne Admin"
-      title="Workflow Dashboard"
-      description="One-page summaries for every workflow. Open a workflow to inspect its latest outcome and next safe action."
-      descriptionClassName="max-w-none whitespace-nowrap"
-    >
+  const content = (
+    <div id="core-pipelines" className={cn("space-y-6", withoutShell && "pt-8 border-t border-border/70 scroll-mt-20")}>
+      {withoutShell ? (
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="inline-block size-2 rounded-full bg-primary" />
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+                Platform Workflows
+              </p>
+            </div>
+            <h2 className="font-serif text-2xl font-medium tracking-tight text-primary sm:text-3xl mt-1">
+              Core Automations & Data Pipelines (G1–G12)
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Automated monitoring, catalog synchronization, order reconciliation, and platform compliance pipelines.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="rounded-full border border-border/70 bg-white px-3.5 py-1 text-xs font-mono text-muted-foreground shadow-sm">
+              {workflows.length || 12} Workflows Active
+            </span>
+          </div>
+        </div>
+      ) : null}
+
       {error ? (
         <Card role="alert" className="gap-0 rounded-[24px] border-rose-200 bg-rose-50 py-0 shadow-sm">
           <CardContent className="p-4 text-sm leading-6 text-rose-900">{error}</CardContent>
@@ -283,6 +306,21 @@ export default function WorkflowDashboardOverview() {
           ))}
         </div>
       ) : null}
+    </div>
+  );
+
+  if (withoutShell) {
+    return content;
+  }
+
+  return (
+    <WorkflowDashboardShell
+      eyebrow="Cevonne Admin"
+      title="Workflow Dashboard"
+      description="One-page summaries for every workflow. Open a workflow to inspect its latest outcome and next safe action."
+      descriptionClassName="max-w-none whitespace-nowrap"
+    >
+      {content}
     </WorkflowDashboardShell>
   );
 }

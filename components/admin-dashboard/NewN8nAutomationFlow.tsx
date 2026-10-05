@@ -40,7 +40,11 @@ const lastRunLabel = (value?: string | null) => {
   return `${dateLabel} · today`;
 };
 
-export default function NewN8nAutomationFlow() {
+export default function NewN8nAutomationFlow({
+  children,
+}: {
+  children?: React.ReactNode;
+} = {}) {
   const { authFetch } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
   const [latestItem, setLatestItem] = useState<PublishingRecord | null>(null);
@@ -311,6 +315,9 @@ export default function NewN8nAutomationFlow() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Embedded Workflows (e.g. Core Platform Workflows G1–G12) */}
+      {children}
     </WorkflowDashboardShell>
   );
 }
