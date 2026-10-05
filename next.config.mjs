@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 const r2RemotePatterns = [
   { protocol: "https", hostname: "*.r2.dev" },
   { protocol: "https", hostname: "cdn.cevonne.com" },
+  { protocol: "https", hostname: "images.unsplash.com" },
 ];
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
@@ -20,14 +21,14 @@ try {
 const contentSecurityPolicy = [
   "default-src 'self'",
   "base-uri 'self'",
-  "connect-src 'self' https://*.supabase.co https://*.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://cdn.jsdelivr.net https://*.jsdelivr.net https://unpkg.com blob: data:",
+  "connect-src 'self' https://*.supabase.co https://*.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://cdn.jsdelivr.net https://*.jsdelivr.net https://unpkg.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com blob: data:",
   "font-src 'self' data: https: https://fonts.gstatic.com",
   "form-action 'self'",
   "frame-ancestors 'none'",
-  "img-src 'self' data: blob: https://cdn.cevonne.com https://*.r2.dev https://cdn.jsdelivr.net https://*.jsdelivr.net",
+  "img-src 'self' data: blob: https://cdn.cevonne.com https://*.r2.dev https://cdn.jsdelivr.net https://*.jsdelivr.net https://images.unsplash.com https://www.googletagmanager.com https://*.google-analytics.com",
   "media-src 'self' blob: https://cdn.cevonne.com https://*.r2.dev",
   "object-src 'none'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' https://cdn.jsdelivr.net https://*.jsdelivr.net https://unpkg.com",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' https://cdn.jsdelivr.net https://*.jsdelivr.net https://unpkg.com https://www.googletagmanager.com https://*.googletagmanager.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "worker-src 'self' blob: https://cdn.jsdelivr.net https://*.jsdelivr.net https://unpkg.com",
   "upgrade-insecure-requests",
