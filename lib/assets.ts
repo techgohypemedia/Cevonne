@@ -34,19 +34,22 @@ export const STATIC_ASSETS = {
   introVideo3: `${VIDEO_BASE}/intro3.mp4`,
 };
 
+const CDN_BASE = "https://cdn.cevonne.com";
+const PRODUCT_CDN_BASE = `${CDN_BASE}/products`;
+
 const PRODUCT_ASSETS = {
-  "product1.png": `${IMAGE_BASE}/product1.png`,
-  "product2.png": `${IMAGE_BASE}/product2.png`,
-  "product3.png": `${IMAGE_BASE}/product3.png`,
-  "product4.png": `${IMAGE_BASE}/product4.png`,
-  "product5.png": `${IMAGE_BASE}/product5.png`,
-  "product6.png": `${IMAGE_BASE}/product6.png`,
-  "product7.png": `${IMAGE_BASE}/product7.png`,
-  "product8.png": `${IMAGE_BASE}/product8.png`,
-  "product9.png": `${IMAGE_BASE}/product9.png`,
-  "product10.png": `${IMAGE_BASE}/product10.png`,
-  "product11.png": `${IMAGE_BASE}/product11.png`,
-  "product12.png": `${IMAGE_BASE}/product12.png`,
+  "product1.png": `${PRODUCT_CDN_BASE}/product1.png`,
+  "product2.png": `${PRODUCT_CDN_BASE}/product2.png`,
+  "product3.png": `${PRODUCT_CDN_BASE}/product3.png`,
+  "product4.png": `${PRODUCT_CDN_BASE}/product4.png`,
+  "product5.png": `${PRODUCT_CDN_BASE}/product5.png`,
+  "product6.png": `${PRODUCT_CDN_BASE}/product6.png`,
+  "product7.png": `${PRODUCT_CDN_BASE}/product7.png`,
+  "product8.png": `${PRODUCT_CDN_BASE}/product8.png`,
+  "product9.png": `${PRODUCT_CDN_BASE}/product9.png`,
+  "product10.png": `${PRODUCT_CDN_BASE}/product10.png`,
+  "product11.png": `${PRODUCT_CDN_BASE}/product11.png`,
+  "product12.png": `${PRODUCT_CDN_BASE}/product12.png`,
 };
 
 const PRODUCT_ALIASES = Object.fromEntries(

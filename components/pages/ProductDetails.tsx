@@ -2,9 +2,9 @@
 
 // src/components/pages/ProductDetails.jsx
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useLocation, useParams } from "@/lib/router";
+import { Link, useLocation, useParams, useNavigate } from "@/lib/router";
 import {
-  Star, StarHalf, Truck, ShieldCheck, Recycle, Sparkles, X,
+  Star, StarHalf, Truck, ShieldCheck, Recycle, X,
   ShoppingCart, Heart, Share2, BadgeCheck, ChevronLeft, ChevronRight,
   ThumbsUp, MessageSquare, CheckCircle2, Video,
 } from "lucide-react";
@@ -233,6 +233,9 @@ type NormalizedShade = {
   hex: string;
   thumb?: string;
   desc?: string;
+  quantity?: number;
+  isOutOfStock?: boolean;
+  sku?: string;
 };
 
 type ShadeSource = {
@@ -244,9 +247,13 @@ type ShadeSource = {
   hexColor?: string;
   thumb?: string;
   image?: string;
+  imageUrl?: string;
   url?: string;
   desc?: string;
   description?: string;
+  quantity?: number;
+  isOutOfStock?: boolean;
+  inventory?: { quantity?: number } | null;
 };
 
 type ProductDetailsSource = {
@@ -371,13 +378,21 @@ const normalizeShades = (
   { allowFallbackSingle = true }: { allowFallbackSingle?: boolean } = {}
 ) => {
   const preferred = Array.isArray(experienceShades)
-    ? experienceShades.map((shade, index) => ({
-        key: shade.key ?? shade.id ?? shade.sku ?? `experience-shade-${index + 1}`,
-        name: shade.name ?? `Shade ${index + 1}`,
-        hex: shade.hex ?? shade.hexColor ?? "#a21caf",
-        thumb: shade.thumb ?? shade.image ?? shade.url ?? gallery[index],
-        desc: shade.desc ?? shade.description ?? "",
-      }))
+    ? experienceShades.map((shade, index) => {
+        const rawQty = shade.quantity ?? shade.inventory?.quantity;
+        const qtyNum = rawQty !== undefined && rawQty !== null ? Number(rawQty) : undefined;
+        const outOfStock = shade.isOutOfStock ?? (qtyNum !== undefined ? qtyNum <= 0 : false);
+        return {
+          key: shade.key ?? shade.id ?? shade.sku ?? `experience-shade-${index + 1}`,
+          name: shade.name ?? `Shade ${index + 1}`,
+          hex: shade.hex ?? shade.hexColor ?? "#a21caf",
+          thumb: shade.imageUrl ?? shade.thumb ?? shade.image ?? shade.url ?? gallery[index],
+          desc: shade.desc ?? shade.description ?? "",
+          quantity: qtyNum,
+          isOutOfStock: outOfStock,
+          sku: shade.sku,
+        };
+      })
     : [];
   if (preferred.length) return preferred;
 
@@ -386,13 +401,21 @@ const normalizeShades = (
 
   let mapped: NormalizedShade[] = [];
   if (Array.isArray(sourceShades) && sourceShades.length > 0) {
-    mapped = sourceShades.map((shade, index) => ({
-      key: shade.key ?? shade.id ?? shade.sku ?? `shade-${index + 1}`,
-      name: shade.name ?? `Shade ${index + 1}`,
-      hex: shade.hex ?? shade.hexColor ?? "#a21caf",
-      thumb: shade.thumb ?? shade.image ?? shade.url ?? gallery[index],
-      desc: shade.desc ?? shade.description ?? "",
-    }));
+    mapped = sourceShades.map((shade, index) => {
+      const rawQty = shade.quantity ?? shade.inventory?.quantity;
+      const qtyNum = rawQty !== undefined && rawQty !== null ? Number(rawQty) : undefined;
+      const outOfStock = shade.isOutOfStock ?? (qtyNum !== undefined ? qtyNum <= 0 : false);
+      return {
+        key: shade.key ?? shade.id ?? shade.sku ?? `shade-${index + 1}`,
+        name: shade.name ?? `Shade ${index + 1}`,
+        hex: shade.hex ?? shade.hexColor ?? "#a21caf",
+        thumb: shade.imageUrl ?? shade.thumb ?? shade.image ?? shade.url ?? gallery[index],
+        desc: shade.desc ?? shade.description ?? "",
+        quantity: qtyNum,
+        isOutOfStock: outOfStock,
+        sku: shade.sku,
+      };
+    });
   } else if (allowFallbackSingle && (source.type === 'single' || !sourceShades?.length)) {
     mapped = [{
       key: source.slug ?? source.id ?? 'default',
@@ -400,6 +423,8 @@ const normalizeShades = (
       hex: '#000000',
       thumb: source.media?.heroImage ?? gallery[0],
       desc: sourceDescription?.body ?? "",
+      quantity: 99,
+      isOutOfStock: false,
     }];
   }
   return mapped;
@@ -484,14 +509,20 @@ const buildProductView = (
       ""
   };
 
-  const sourceBadges = Array.isArray(source.badges)
-    ? source.badges.map((b) => (typeof b === "string" ? b : b.label ?? ""))
-    : source.badges;
-    
-  const badges = cleanList(
-    sourceBadges ?? experience.badges,
-    useFallbackContent ? cleanList(fallbackProduct.badges, cleanList(fallbackContent.badges, [])) : []
-  );
+  const sanitizeBadge = (b: unknown): string => {
+    if (!b) return "";
+    if (typeof b === "string") return b === "[object Object]" ? "" : b.trim();
+    if (typeof b === "object") {
+      const val = (b as Record<string, unknown>).label ?? (b as Record<string, unknown>).name ?? (b as Record<string, unknown>).text ?? "";
+      return typeof val === "string" && val !== "[object Object]" ? val.trim() : "";
+    }
+    return "";
+  };
+
+  const rawBadges = source.badges ?? experience.badges ?? (useFallbackContent ? fallbackProduct.badges ?? fallbackContent.badges : []);
+  const badges = (Array.isArray(rawBadges) ? rawBadges : typeof rawBadges === "string" ? (rawBadges as string).split(/[\n,]/) : [])
+    .map(sanitizeBadge)
+    .filter(Boolean);
   
   const benefits = cleanList(
     experience.benefits ?? source.benefits,
@@ -594,7 +625,7 @@ const buildProductView = (
     brand,
     type: productType,
     productType,
-    shipping: experience.shipping ?? source.shipping ?? (useFallbackContent ? fallbackProduct.shipping ?? fallbackContent.shipping ?? "Free shipping on prepaid orders" : ""),
+    shipping: experience.shipping ?? source.shipping ?? (useFallbackContent ? fallbackProduct.shipping ?? fallbackContent.shipping ?? "Free shipping on orders above ₹999" : ""),
     returns: experience.returns ?? source.returns ?? (useFallbackContent ? fallbackProduct.returns ?? fallbackContent.returns ?? "Easy 7-day returns on unopened items." : ""),
     reviews: Number.isFinite(reviewCount) ? reviewCount : Number(reviewCount) || reviewsList.length || 0,
     rating:
@@ -602,9 +633,9 @@ const buildProductView = (
         : Number.isFinite(experience.rating) && useFallbackContent ? experience.rating
           : Number.isFinite(source.rating) ? source.rating
             : Number(useFallbackContent ? (fallbackProduct.rating ?? fallbackProduct.averageRating ?? fallbackContent.rating ?? fallbackContent.averageRating ?? 0) : 0) || 0,
-    mrp: pricing.originalValue ?? source.mrp ?? source.compareAtPrice ?? (useFallbackContent ? basePricing.originalValue ?? fallbackProduct.mrp ?? fallbackProduct.price ?? fallbackContent.mrp ?? fallbackContent.price : null),
-    price: pricing.price ?? source.price ?? source.basePrice ?? (useFallbackContent ? basePricing.price ?? fallbackProduct.price ?? fallbackContent.price : 0),
-    currency: pricing.currency ?? source.currency ?? (useFallbackContent ? basePricing.currency ?? fallbackProduct.currency ?? fallbackContent.currency : "INR"),
+    mrp: (Number(pricing.originalValue ?? source.mrp ?? source.compareAtPrice) || null) ?? (useFallbackContent ? Number(basePricing.originalValue ?? fallbackProduct.mrp ?? fallbackProduct.price ?? fallbackContent.mrp ?? 1299) : 1299),
+    price: (Number(pricing.price ?? source.price ?? source.basePrice) || null) ?? (useFallbackContent ? Number(basePricing.price ?? fallbackProduct.price ?? fallbackContent.price ?? 899) : 899),
+    currency: (pricing.currency === "INR" || source.currency === "INR" || !source.currency ? "₹" : (pricing.currency || source.currency || "₹")),
     reviewsList,
     finish: source?.finish ?? experience.finish ?? (useFallbackContent ? fallbackProduct.finish ?? fallbackContent.finish : ""),
     coverage: source?.coverage ?? experience.coverage ?? (useFallbackContent ? fallbackProduct.coverage ?? fallbackContent.coverage : ""),
@@ -698,6 +729,7 @@ export default function ProductDetails({ data }: { data?: any }) {
   );
   const crumbs = Array.isArray(p.categoryPath) ? p.categoryPath : p.category ? [p.category] : [];
   const { cartItems, wishlist, addToCart, toggleWishlist, openDrawer } = useShop();
+  const navigate = useNavigate();
   const { user, isAuthenticated, authFetch } = useAuth();
   const { products: catalogProducts } = useProductsCatalog();
 
@@ -813,6 +845,7 @@ export default function ProductDetails({ data }: { data?: any }) {
   const heroOverlay = HERO.overlay || "linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,.06) 100%)";
   const gallery = useMemo(() => (Array.isArray(p.gallery) ? p.gallery.map(resolveAsset) : []), [p.gallery]);
   const [activeImage, _setActiveImage] = useState(0);
+  const [shadeImageOverride, setShadeImageOverride] = useState<string | null>(null);
 
   // Throttle image index updates to avoid jitter/overlap
   const changeRef = useRef(0);
@@ -821,6 +854,7 @@ export default function ProductDetails({ data }: { data?: any }) {
     const now = performance.now();
     if (now - changeRef.current < MIN_IMAGE_CHANGE) return; // throttle
     changeRef.current = now;
+    setShadeImageOverride(null);
     _setActiveImage((curr) => (next === curr ? curr : next));
   };
 
@@ -879,7 +913,7 @@ export default function ProductDetails({ data }: { data?: any }) {
     };
   }, [gallery.length, activeImage]);
 
-  const heroSrc = gallery[activeImage] || (HERO.image ? resolveAsset(HERO.image) : "");
+  const heroSrc = shadeImageOverride || gallery[activeImage] || (HERO.image ? resolveAsset(HERO.image) : "");
 
   const featureList = useMemo(() => {
     const benefitLabels = Array.isArray(p.benefits) ? p.benefits.slice(0, 3) : [];
@@ -920,9 +954,26 @@ export default function ProductDetails({ data }: { data?: any }) {
   /* price, badges, etc. */
   const [qty, setQty] = useState(1);
   const priceBlock = useMemo(() => {
-    const save = Math.max(0, (p.mrp || 0) - (p.price || 0));
-    return { save, hasSave: save > 0 };
-  }, [p.mrp, p.price]);
+    const mrp = Number(p.mrp) || 0;
+    const price = Number(p.price) || 0;
+    const save = Math.max(0, mrp - price);
+    const percent = mrp > 0 && save > 0 ? Math.round((save / mrp) * 100) : 0;
+    const rawDiscount = typeof p.discountText === "string" ? p.discountText.trim() : "";
+    const discountText =
+      rawDiscount && rawDiscount !== "-"
+        ? rawDiscount
+        : percent > 0
+        ? `${percent}% OFF`
+        : save > 0
+        ? `SAVE ${p.currency || "₹"}${save}`
+        : "";
+    return {
+      save,
+      percent,
+      hasSave: save > 0,
+      discountText,
+    };
+  }, [p.mrp, p.price, p.discountText, p.currency]);
 
   /* ingredients view toggle */
   const [showFullIngredients, setShowFullIngredients] = useState(false);
@@ -973,62 +1024,148 @@ export default function ProductDetails({ data }: { data?: any }) {
   );
   useEffect(() => {
     const shade = shadeMap[activeShade];
-    if (shade?.img && gallery.length > 0) {
-      const idx = gallery.findIndex((g) => g === shade.img);
-      if (idx >= 0) setActiveImage(idx);
+    if (shade?.img) {
+      setShadeImageOverride(shade.img);
+      if (gallery.length > 0) {
+        const idx = gallery.findIndex((g) => g === shade.img);
+        if (idx >= 0) setActiveImage(idx);
+      }
     }
   }, [activeShade, gallery, shadeMap]);
 
-  const shadeDetails = shadeMap[activeShade];
-  const activeShadeLabel = shadeDetails?.name || "Selected shade";
-  const shadeKey = shadeDetails?.key;
+  const shadeDetails = shadeMap[activeShade] || (Array.isArray(p.shades) && p.shades[0]) || null;
+  const shadeQuantity = shadeDetails?.quantity !== undefined && shadeDetails?.quantity !== null ? Number(shadeDetails.quantity) : undefined;
+  const isSelectedShadeOutOfStock = Boolean(
+    shadeDetails?.isOutOfStock ||
+    (shadeQuantity !== undefined && shadeQuantity <= 0)
+  );
+  const isSelectedShadeLowStock = Boolean(
+    !isSelectedShadeOutOfStock &&
+    shadeQuantity !== undefined &&
+    shadeQuantity > 0 &&
+    shadeQuantity <= 5
+  );
+  const maxAvailableQty = shadeQuantity !== undefined && shadeQuantity > 0 ? shadeQuantity : 99;
+
+  useEffect(() => {
+    if (shadeQuantity !== undefined && shadeQuantity > 0 && qty > shadeQuantity) {
+      setQty(shadeQuantity);
+    }
+  }, [shadeQuantity, qty]);
+
+  const activeShadeLabel = shadeDetails?.name || p.title || p.name || "Selected item";
+  const shadeIdentifier =
+    shadeDetails?.id ||
+    shadeDetails?.sku ||
+    shadeDetails?.key ||
+    shadeDetails?.name ||
+    activeShade ||
+    "default";
+  const itemKey = `${p.id || p.slug || "prod"}-${shadeIdentifier}`;
   const isActiveShadeInCart = useMemo(
-    () => (shadeKey ? cartItems.some((item) => item.key === shadeKey) : false),
-    [cartItems, shadeKey],
+    () => cartItems.some((item) => item.key === itemKey),
+    [cartItems, itemKey],
   );
   const isActiveShadeWishlisted = useMemo(
-    () => (shadeKey ? wishlist.some((item) => item.key === shadeKey) : false),
-    [wishlist, shadeKey],
+    () => wishlist.some((item) => item.key === itemKey),
+    [wishlist, itemKey],
   );
 
-  const priceValue = Number(p.price ?? 0)
+  const rawPrice = Number(p.price);
+  const priceValue = Number.isFinite(rawPrice) && rawPrice > 0 ? rawPrice : 899;
+  const currencySymbol = p.currency === "INR" || !p.currency ? "₹" : p.currency;
   const shadeImg = shadeDetails?.img || gallery[0] || heroSrc;
-  const shadeItem = shadeKey
-    ? {
-      id: p.id || p.slug || shadeKey,
-      key: shadeKey,
-      sku: shadeKey,
-      productId: p.id || p.slug || shadeKey,
-      productName: p.name || p.title || activeShadeLabel,
-      name: activeShadeLabel,
-      color: shadeDetails?.hex,
-      image: shadeImg,
-      thumb: shadeImg,
-      price: Number.isFinite(priceValue) ? priceValue : 0,
-      currency: p.currency || "â‚¹",
-    }
-    : null;
+  const mainProductImg =
+    gallery[0] ||
+    (Array.isArray(p.images) && p.images[0]?.url) ||
+    (HERO.image ? resolveAsset(HERO.image) : "") ||
+    p.heroImage ||
+    p.imageUrl ||
+    "/assets/images/shades/cevonne-ruby-red.jpg";
+  const displayName = p.title || p.name || activeShadeLabel;
+  const currentItem = useMemo(() => ({
+    id: itemKey,
+    key: itemKey,
+    sku: shadeDetails?.sku || shadeDetails?.id || itemKey,
+    productId: p.id || p.slug || "product-default",
+    productName: displayName,
+    name: displayName,
+    shade: shadeDetails?.name || activeShadeLabel,
+    shadeName: shadeDetails?.name || activeShadeLabel,
+    color: shadeDetails?.hex || shadeDetails?.hexColor || "#8b1e4b",
+    productImage: mainProductImg,
+    image: mainProductImg,
+    thumb: mainProductImg,
+    shadeImage: shadeImg,
+    price: priceValue,
+    currency: currencySymbol,
+    quantity: Math.max(1, qty),
+  }), [itemKey, p.id, p.slug, displayName, activeShadeLabel, shadeDetails, mainProductImg, shadeImg, priceValue, currencySymbol, qty]);
 
   const handleAddToCart = () => {
-    if (!shadeItem) return;
-    const added = addToCart(shadeItem);
+    if (!currentItem) return;
+    if (isSelectedShadeOutOfStock) {
+      toast.error(`${activeShadeLabel} is currently out of stock`);
+      return;
+    }
+    const added = addToCart(currentItem);
     if (added) {
       toast.success(`${activeShadeLabel} added to cart`);
       openDrawer("cart");
     } else {
       toast(`${activeShadeLabel} is already in your cart`);
+      openDrawer("cart");
     }
   };
 
+  const handleBuyNow = () => {
+    if (!currentItem) return;
+    if (isSelectedShadeOutOfStock) {
+      toast.error(`${activeShadeLabel} is currently out of stock`);
+      return;
+    }
+    addToCart(currentItem);
+    navigate("/checkout");
+  };
+
   const handleToggleWishlist = () => {
-    if (!shadeItem) return;
-    const status = toggleWishlist(shadeItem);
+    if (!currentItem) return;
+    const status = toggleWishlist(currentItem);
     if (status === "added") {
       toast.success(`${activeShadeLabel} saved to wishlist`);
       openDrawer("wishlist");
     } else if (status === "removed") {
       toast(`${activeShadeLabel} removed from wishlist`);
     }
+  };
+
+  const handleShare = async () => {
+    const url = typeof window !== "undefined" ? window.location.href : "";
+    const shareData = {
+      title: p.title || p.name || "Cevonne",
+      text: p.subtitle || p.longDescription || `Check out ${p.title || p.name} on Cevonne`,
+      url,
+    };
+
+    if (typeof navigator !== "undefined" && navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+      try {
+        await navigator.share(shareData);
+        return;
+      } catch (err) {
+        if ((err as Error)?.name === "AbortError") return;
+      }
+    }
+
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      try {
+        await navigator.clipboard.writeText(url);
+        toast.success("Link copied to clipboard!");
+        return;
+      } catch {
+        // ignore
+      }
+    }
+    toast.success("Link copied to clipboard!");
   };
 
   /* reviews */
@@ -1554,21 +1691,39 @@ export default function ProductDetails({ data }: { data?: any }) {
               </header>
 
               <div className="animate-in fade-in slide-in-from-bottom-6 duration-700 delay-300">
-                <div className="flex items-baseline gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
                   <div className="text-2xl md:text-3xl font-bold text-[var(--fg)]">{p.currency}{p.price}</div>
-                  {p.mrp ? <div className="text-xl line-through text-[var(--fg-muted)] decoration-1">{p.currency}{p.mrp}</div> : null}
-                  {priceBlock.hasSave && <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white border-0 px-2 py-0.5 text-sm">{p.discountText}</Badge>}
+                  {p.mrp && Number(p.mrp) > Number(p.price) ? (
+                    <div className="text-lg md:text-xl line-through text-[var(--fg-muted)] decoration-1">
+                      {p.currency}{p.mrp}
+                    </div>
+                  ) : null}
+                  {priceBlock.hasSave && priceBlock.discountText ? (
+                    <Badge className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold border-0 px-2.5 py-0.5 text-xs rounded-full shadow-sm">
+                      {priceBlock.discountText}
+                    </Badge>
+                  ) : null}
                 </div>
-                <div className="mt-1 text-sm text-[var(--fg-muted)]">Inclusive of all taxes</div>
+                <div className="mt-1 text-sm text-[var(--fg-muted)] flex items-center gap-2">
+                  <span>Inclusive of all taxes</span>
+                  {priceBlock.hasSave ? (
+                    <span className="font-medium text-emerald-600">
+                      (You save {p.currency}{priceBlock.save.toLocaleString("en-IN")})
+                    </span>
+                  ) : null}
+                </div>
               </div>
 
               {!!p.badges?.length && (
                 <div className="flex flex-wrap gap-2">
-                  {p.badges.map((b, i) => (
-                    <Badge key={i} variant="secondary" className="bg-[var(--chip-bg)] text-[var(--fg)] border-transparent">
-                      {typeof b === 'object' ? b.label : b}
-                    </Badge>
-                  ))}
+                  {p.badges
+                    .map((b: any) => (typeof b === "object" && b !== null ? b.label ?? b.name ?? b.title : b))
+                    .filter((label: any) => typeof label === "string" && label.trim() !== "" && label !== "[object Object]")
+                    .map((label: string, i: number) => (
+                      <Badge key={i} variant="secondary" className="bg-[var(--chip-bg)] text-[var(--fg)] border-transparent">
+                        {label}
+                      </Badge>
+                    ))}
                 </div>
               )}
 
@@ -1615,13 +1770,31 @@ export default function ProductDetails({ data }: { data?: any }) {
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex flex-col">
                       <Label className="text-sm font-medium text-[var(--fg)]">Select Shade</Label>
-                      <span className="text-lg font-semibold text-[var(--fg)] mt-0.5">{activeShadeLabel}</span>
+                      <div className="flex flex-wrap items-center gap-2.5 mt-0.5">
+                        <span className="text-lg font-semibold text-[var(--fg)]">{activeShadeLabel}</span>
+                        {isSelectedShadeOutOfStock && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium tracking-wide bg-rose-50 text-rose-600 border border-rose-200">
+                            Out of Stock
+                          </span>
+                        )}
+                        {isSelectedShadeLowStock && shadeQuantity !== undefined && (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium tracking-wide bg-[#f6edf7] text-[#4b0d4b] border border-[#ead2ef]">
+                            <span className="relative flex h-2 w-2">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#c28ad1] opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-[#4b0d4b]"></span>
+                            </span>
+                            Only {shadeQuantity} {shadeQuantity === 1 ? "piece" : "pieces"} left!
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-4">
                     {p.shades.map((s) => {
                       const isActive = activeShade === s.key;
+                      const sQty = s.quantity !== undefined && s.quantity !== null ? Number(s.quantity) : undefined;
+                      const isSLowStock = !s.isOutOfStock && sQty !== undefined && sQty > 0 && sQty <= 5;
                       return (
                         <div key={s.key} className="group relative">
                           <button
@@ -1629,18 +1802,29 @@ export default function ProductDetails({ data }: { data?: any }) {
                             className={`relative h-9 w-9 rounded-full transition-all duration-300 ${isActive
                               ? "ring-2 ring-offset-2 ring-black scale-110 shadow-md"
                               : "hover:scale-110 hover:shadow-sm ring-1 ring-black/5"
-                              }`}
+                              } ${s.isOutOfStock ? "opacity-75" : ""}`}
                             style={{ backgroundColor: s.hex }}
-                            aria-label={`Select shade ${s.name}`}
+                            aria-label={`Select shade ${s.name}${s.isOutOfStock ? " (Out of Stock)" : isSLowStock ? ` (Only ${sQty} left)` : ""}`}
                           >
                             {/* Inner highlight for depth */}
                             <span className="absolute inset-0 rounded-full bg-gradient-to-tr from-black/10 to-transparent pointer-events-none" />
+                            {/* Diagonal strike for Out of Stock */}
+                            {s.isOutOfStock && (
+                              <span className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden rounded-full">
+                                <span className="w-full h-[1.5px] bg-white/95 shadow-sm rotate-45 transform" />
+                              </span>
+                            )}
                           </button>
 
                           {/* Tooltip */}
                           <span className={`absolute -top-10 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-neutral-900 text-white text-xs font-medium shadow-xl transition-all duration-200 pointer-events-none whitespace-nowrap z-20 ${isActive && showTooltip ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0"
                             }`}>
                             {s.name}
+                            {s.isOutOfStock ? (
+                              <span className="ml-1 text-[10px] text-rose-300 font-normal">(Out of stock)</span>
+                            ) : isSLowStock ? (
+                              <span className="ml-1 text-[10px] text-rose-200 font-normal">(Only {sQty} left)</span>
+                            ) : null}
                             {/* Arrow */}
                             <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-neutral-900 rotate-45" />
                           </span>
@@ -1654,16 +1838,27 @@ export default function ProductDetails({ data }: { data?: any }) {
               {/* CTA block */}
               <section ref={ctaRef}>
                 <div className="flex flex-col gap-3 mt-2">
+                  {/* Low Stock Urgency Alert */}
+                  {isSelectedShadeLowStock && shadeQuantity !== undefined && (
+                    <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-[#fbf5fa] border border-[#ead2ef] text-[#4b0d4b] text-xs font-medium animate-in fade-in slide-in-from-top-1 duration-200 shadow-xs">
+                      <span className="text-base text-[#4b0d4b] animate-pulse">⚡</span>
+                      <span>
+                        Hurry, only <strong className="font-semibold text-[#3d0a45] underline decoration-[#c28ad1] decoration-1">{shadeQuantity} {shadeQuantity === 1 ? "piece" : "pieces"}</strong> remaining for this shade — order now!
+                      </span>
+                    </div>
+                  )}
+
                   <div className="flex items-center gap-3">
-                    <div className="inline-flex items-center border px-2 border-[var(--divider)]">
-                      <button className="px-3 py-1 text-lg text-[var(--fg)]" onClick={() => setQty((q) => Math.max(1, q - 1))}>-</button>
+                    <div className={`inline-flex items-center border px-2 border-[var(--divider)] ${isSelectedShadeOutOfStock ? "opacity-40 pointer-events-none" : ""}`}>
+                      <button className="px-3 py-1 text-lg text-[var(--fg)]" disabled={isSelectedShadeOutOfStock} onClick={() => setQty((q) => Math.max(1, q - 1))}>-</button>
                       <input
                         value={qty}
-                        onChange={(e) => setQty(Math.max(1, Number(e.target.value) || 1))}
+                        disabled={isSelectedShadeOutOfStock}
+                        onChange={(e) => setQty(Math.max(1, Math.min(maxAvailableQty, Number(e.target.value) || 1)))}
                         className="w-10 text-center outline-none bg-transparent text-[var(--fg)]"
                         inputMode="numeric"
                       />
-                      <button className="px-3 py-1 text-lg text-[var(--fg)]" onClick={() => setQty((q) => q + 1)}>+</button>
+                      <button className="px-3 py-1 text-lg text-[var(--fg)]" disabled={isSelectedShadeOutOfStock || qty >= maxAvailableQty} onClick={() => setQty((q) => Math.min(maxAvailableQty, q + 1))}>+</button>
                     </div>
 
                     {/* Desktop/tablet inline buttons */}
@@ -1671,12 +1866,27 @@ export default function ProductDetails({ data }: { data?: any }) {
                       <Button
                         type="button"
                         onClick={handleAddToCart}
-                        className="px-5 sm:px-6 min-h-10 sm:min-h-11"
+                        disabled={isSelectedShadeOutOfStock}
+                        className={`px-5 sm:px-6 min-h-10 sm:min-h-11 ${
+                          isSelectedShadeOutOfStock
+                            ? "bg-neutral-200 text-neutral-500 border border-neutral-300 cursor-not-allowed hover:bg-neutral-200 shadow-none"
+                            : "cursor-pointer"
+                        }`}
                       >
                         <ShoppingCart className="h-4 w-4 mr-2" />
-                        {isActiveShadeInCart ? "In Cart" : "Add to Cart"}
+                        {isSelectedShadeOutOfStock ? "Out of Stock" : isActiveShadeInCart ? "In Cart" : "Add to Cart"}
                       </Button>
-                      <Button variant="outline" className="px-5 sm:px-6 min-h-10 sm:min-h-11">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleBuyNow}
+                        disabled={isSelectedShadeOutOfStock}
+                        className={`px-5 sm:px-6 min-h-10 sm:min-h-11 ${
+                          isSelectedShadeOutOfStock
+                            ? "opacity-40 cursor-not-allowed pointer-events-none"
+                            : "cursor-pointer hover:bg-[var(--chip-bg)]"
+                        }`}
+                      >
                         Buy Now
                       </Button>
                     </div>
@@ -1687,12 +1897,28 @@ export default function ProductDetails({ data }: { data?: any }) {
                     <Button
                       type="button"
                       onClick={handleAddToCart}
-                      className="w-full min-h-11"
-                      aria-label={isActiveShadeInCart ? "In Cart" : "Add to Cart"}
+                      disabled={isSelectedShadeOutOfStock}
+                      className={`w-full min-h-11 flex items-center justify-center gap-2 ${
+                        isSelectedShadeOutOfStock
+                          ? "bg-neutral-200 text-neutral-500 border border-neutral-300 cursor-not-allowed hover:bg-neutral-200 shadow-none"
+                          : "cursor-pointer"
+                      }`}
+                      aria-label={isSelectedShadeOutOfStock ? "Out of Stock" : isActiveShadeInCart ? "In Cart" : "Add to Cart"}
                     >
                       <ShoppingCart className="h-5 w-5" />
+                      <span>{isSelectedShadeOutOfStock ? "Out of Stock" : isActiveShadeInCart ? "In Cart" : "Add to Cart"}</span>
                     </Button>
-                    <Button variant="outline" className="w-full min-h-11">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleBuyNow}
+                      disabled={isSelectedShadeOutOfStock}
+                      className={`w-full min-h-11 ${
+                        isSelectedShadeOutOfStock
+                          ? "opacity-40 cursor-not-allowed pointer-events-none"
+                          : "cursor-pointer hover:bg-[var(--chip-bg)]"
+                      }`}
+                    >
                       Buy Now
                     </Button>
                   </div>
@@ -1718,14 +1944,24 @@ export default function ProductDetails({ data }: { data?: any }) {
                       type="button"
                       aria-pressed={isActiveShadeWishlisted}
                       onClick={handleToggleWishlist}
-                      className={`p-2 border transition-colors ${isActiveShadeWishlisted
+                      title={isActiveShadeWishlisted ? "Remove from wishlist" : "Add to wishlist"}
+                      aria-label={isActiveShadeWishlisted ? "Remove from wishlist" : "Add to wishlist"}
+                      className={`p-2.5 border transition-all cursor-pointer rounded-lg ${isActiveShadeWishlisted
                         ? "border-rose-400/80 text-rose-400 bg-rose-400/10 shadow-[0_0_15px_rgba(244,63,94,0.3)]"
                         : "border-[var(--divider)] text-[var(--fg)] hover:border-rose-400/60 hover:text-rose-400"
                         }`}
                     >
-                      <Heart className="h-4 w-4" />
+                      <Heart className={`h-4 w-4 ${isActiveShadeWishlisted ? "fill-rose-400 text-rose-400" : ""}`} />
                     </button>
-                    <button className="p-2 border border-[var(--divider)] text-[var(--fg)]"><Share2 className="h-4 w-4" /></button>
+                    <button
+                      type="button"
+                      onClick={handleShare}
+                      title="Share this product"
+                      aria-label="Share this product"
+                      className="p-2.5 border border-[var(--divider)] text-[var(--fg)] hover:border-[var(--fg)] transition-colors cursor-pointer rounded-lg"
+                    >
+                      <Share2 className="h-4 w-4" />
+                    </button>
                   </div>
                 </div>
               </section>
@@ -1763,7 +1999,7 @@ export default function ProductDetails({ data }: { data?: any }) {
                 </div>
                 <div className="border p-5 border-[var(--divider)] bg-[var(--card-bg)]">
                   <h3 className="font-semibold mb-4 text-[var(--fg)] flex items-center gap-2">
-                    <Sparkles className="h-5 w-5 text-amber-400" /> Ingredient highlights
+                    Ingredient highlights
                   </h3>
                   <ul className="space-y-3">
                     {p.ingredients_highlight?.map((it, i) => (
@@ -2366,8 +2602,53 @@ export default function ProductDetails({ data }: { data?: any }) {
           <div className="mx-auto flex w-full snap-x snap-mandatory gap-3 sm:gap-4 overflow-x-auto pb-4 sm:grid sm:max-w-screen-2xl sm:grid-cols-2 sm:pb-0 lg:grid-cols-3 xl:grid-cols-4 no-scrollbar">
             {relatedProducts.map((rp, i) => {
               const rpHero = pickProductImage(rp);
-              const rpCurrency = rp.pricing?.currency || rp.currency || p.currency || "â‚¹";
-              const rpPrice = rp.pricing?.price ?? rp.price ?? rp.mrp ?? rp.pricing?.originalValue ?? "";
+              const rpCurrency = rp.pricing?.currency === "INR" || !rp.pricing?.currency ? "₹" : (rp.currency || p.currency || "₹");
+              const rawRpPrice = Number(rp.pricing?.price ?? rp.price ?? rp.basePrice);
+              const rpPrice = Number.isFinite(rawRpPrice) && rawRpPrice > 0 ? rawRpPrice : 899;
+              const rpKey = rp.slug || rp.id || `rp-${i}`;
+              const isWishlisted = wishlist.some((w) => w.key === rpKey || w.id === rp.id || w.slug === rp.slug);
+
+              const handleAddRelatedToCart = (e: React.MouseEvent) => {
+                e.preventDefault();
+                e.stopPropagation();
+                addToCart({
+                  key: rpKey,
+                  id: rp.id || rpKey,
+                  slug: rp.slug || rp.id,
+                  name: rp.name || rp.title || "Product",
+                  productName: rp.name || rp.title || "Product",
+                  price: rpPrice,
+                  currency: rpCurrency,
+                  image: rpHero,
+                  thumb: rpHero,
+                  quantity: 1,
+                });
+                toast.success(`${rp.name || "Product"} added to cart`);
+                openDrawer("cart");
+              };
+
+              const handleToggleRelatedWishlist = (e: React.MouseEvent) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const status = toggleWishlist({
+                  key: rpKey,
+                  id: rp.id || rpKey,
+                  slug: rp.slug || rp.id,
+                  name: rp.name || rp.title || "Product",
+                  productName: rp.name || rp.title || "Product",
+                  price: rpPrice,
+                  currency: rpCurrency,
+                  image: rpHero,
+                  thumb: rpHero,
+                });
+                if (status === "added") {
+                  toast.success(`${rp.name || "Product"} saved to wishlist`);
+                  openDrawer("wishlist");
+                } else if (status === "removed") {
+                  toast(`${rp.name || "Product"} removed from wishlist`);
+                }
+              };
+
               return (
                 <Link
                   to={`/product/${rp.id || rp.slug || ""}`}
@@ -2391,11 +2672,14 @@ export default function ProductDetails({ data }: { data?: any }) {
 
                     {/* Wishlist */}
                     <button
-                      onClick={(e) => { e.preventDefault(); toggleWishlist(rp); }}
-                      className="absolute right-2 top-2 p-1.5 bg-white/80 backdrop-blur hover:bg-white text-neutral-600 hover:text-red-500 transition-colors"
+                      type="button"
+                      onClick={handleToggleRelatedWishlist}
+                      className={`absolute right-2 top-2 p-1.5 bg-white/80 backdrop-blur hover:bg-white transition-colors z-20 rounded-full cursor-pointer ${
+                        isWishlisted ? "text-rose-500" : "text-neutral-600 hover:text-rose-500"
+                      }`}
                       aria-label="Save to wishlist"
                     >
-                      <Heart className="h-4 w-4" />
+                      <Heart className={`h-4 w-4 ${isWishlisted ? "fill-rose-500 text-rose-500" : ""}`} />
                     </button>
                   </div>
 
@@ -2404,7 +2688,7 @@ export default function ProductDetails({ data }: { data?: any }) {
                     <div className="flex items-start justify-between gap-2 mb-1">
                       <h3 className="font-medium text-neutral-900 line-clamp-1">{rp.name}</h3>
                       <span className="text-sm font-semibold text-neutral-900">
-                        {rpCurrency}{rpPrice}
+                        {rpCurrency}{rpPrice.toLocaleString("en-IN")}
                       </span>
                     </div>
                     <p className="text-xs text-neutral-500 mb-3 line-clamp-2">
@@ -2424,9 +2708,10 @@ export default function ProductDetails({ data }: { data?: any }) {
                     </div>
 
                     <Button
+                      type="button"
                       variant="outline"
-                      onClick={(e) => { e.preventDefault(); addToCart(rp); }}
-                      className="w-full text-xs h-9 border-neutral-200 hover:border-black hover:bg-black hover:text-white transition-colors"
+                      onClick={handleAddRelatedToCart}
+                      className="w-full text-xs h-9 border-neutral-200 hover:border-black hover:bg-black hover:text-white transition-colors cursor-pointer"
                     >
                       Add to Cart
                     </Button>
@@ -2442,6 +2727,9 @@ export default function ProductDetails({ data }: { data?: any }) {
         product={p}
         activeShade={p.shades?.find(s => s.key === activeShade)}
         activeShadeLabel={activeShadeLabel}
+        isOutOfStock={isSelectedShadeOutOfStock}
+        isLowStock={isSelectedShadeLowStock}
+        lowStockQuantity={shadeQuantity}
         onAddToCart={handleAddToCart}
         isVisible={showStickyBar}
       />
@@ -2449,7 +2737,7 @@ export default function ProductDetails({ data }: { data?: any }) {
   );
 }
 
-function StickyProductBar({ product, activeShade, activeShadeLabel, onAddToCart, isVisible }) {
+function StickyProductBar({ product, activeShade, activeShadeLabel, isOutOfStock, isLowStock, lowStockQuantity, onAddToCart, isVisible }) {
   if (!isVisible) return null;
 
   return (
@@ -2466,27 +2754,52 @@ function StickyProductBar({ product, activeShade, activeShadeLabel, onAddToCart,
           </div>
           <div>
             <h4 className="font-semibold text-sm text-neutral-900">{product.title}</h4>
-            <p className="text-xs text-neutral-500">{activeShadeLabel}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-xs text-neutral-500">{activeShadeLabel}</p>
+              {isOutOfStock ? (
+                <span className="text-[10px] font-medium text-rose-600 bg-rose-50 border border-rose-200 px-1.5 py-0.2 rounded-full">
+                  Out of Stock
+                </span>
+              ) : isLowStock && lowStockQuantity ? (
+                <span className="text-[10px] font-medium text-[#4b0d4b] bg-[#f6edf7] border border-[#ead2ef] px-2 py-0.5 rounded-full">
+                  Only {lowStockQuantity} left!
+                </span>
+              ) : null}
+            </div>
           </div>
         </div>
 
         {/* Center: Shades (Mobile optimized) */}
         <div className="flex-1 md:flex-none flex justify-center">
           <div className="flex items-center gap-2">
-            {product.shades.map(s => (
+            {Array.isArray(product.shades) && product.shades.map(s => (
               <div
                 key={s.key}
-                className={`h-6 w-6 rounded-full border ${activeShade?.key === s.key ? 'ring-1 ring-black ring-offset-1' : 'border-transparent'}`}
+                className={`relative h-6 w-6 rounded-full border ${activeShade?.key === s.key ? 'ring-1 ring-black ring-offset-1' : 'border-transparent'} ${s.isOutOfStock ? 'opacity-70' : ''}`}
                 style={{ backgroundColor: s.hex }}
-              />
+              >
+                {s.isOutOfStock && (
+                  <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <span className="w-full h-[1px] bg-white/90 rotate-45" />
+                  </span>
+                )}
+              </div>
             ))}
           </div>
         </div>
 
         {/* Right: CTA */}
         <div className="flex items-center gap-2">
-          <Button onClick={onAddToCart} className="bg-black text-white hover:bg-neutral-800">
-            Add to Cart - {product.currency}{product.price}
+          <Button
+            onClick={onAddToCart}
+            disabled={isOutOfStock}
+            className={`${
+              isOutOfStock
+                ? "bg-neutral-200 text-neutral-500 border border-neutral-300 cursor-not-allowed hover:bg-neutral-200"
+                : "bg-black text-white hover:bg-neutral-800 cursor-pointer"
+            }`}
+          >
+            {isOutOfStock ? "Out of Stock" : `Add to Cart - ${product.currency}${product.price}`}
           </Button>
         </div>
       </div>

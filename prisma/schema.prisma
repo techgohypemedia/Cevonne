@@ -107,6 +107,7 @@ model Shade {
   arAssetUrl             String?
   arCode                 String?
   arPreviewUrl           String?
+  imageUrl               String?
   inventory              Inventory?
   product                Product                  @relation(fields: [productId], references: [id], onDelete: Cascade)
   g7_discount_targets    g7_discount_targets[]
@@ -471,4 +472,6 @@ enum OrderStatus {
   SHIPPED
   OUT_FOR_DELIVERY
   DELIVERED
+  CANCELLED
+  REJECTED
 }

@@ -3,8 +3,11 @@ import fallbackProducts from "@/data/cevonneProducts";
 import { API_BASE, HAS_API_BASE } from "@/lib/api";
 import type { Product } from "@/types/product";
 
+const initialProducts = (fallbackProducts || []) as Product[];
+
 const cache = {
-  data: (HAS_API_BASE ? null : fallbackProducts || null) as Product[] | null,
+  data: null as Product[] | null,
+  hasFetched: false,
   error: null as string | null,
   promise: null as Promise<Product[]> | null,
 };
@@ -15,29 +18,22 @@ const normalizeItems = (payload: unknown): Product[] => {
 };
 
 export function useProductsCatalog() {
-  const [products, setProducts] = useState<Product[]>(() => cache.data || []);
-  const [loading, setLoading] = useState(Boolean(HAS_API_BASE && !cache.data));
+  const [products, setProducts] = useState<Product[]>(() => cache.data || initialProducts);
+  const [loading, setLoading] = useState(Boolean(!cache.data && !initialProducts.length));
   const [error, setError] = useState<string>(cache.error || "");
 
   useEffect(() => {
     let cancelled = false;
 
-    // Use bundled products only when no backend is configured.
-    if (!HAS_API_BASE && !cache.data && fallbackProducts?.length) {
-      cache.data = fallbackProducts;
-      setProducts(fallbackProducts);
+    if (cache.hasFetched && cache.data) {
+      setLoading(false);
+      return;
     }
 
-    if (!HAS_API_BASE || cache.data) {
-      setLoading(false);
-      return () => {
-        cancelled = true;
-      };
-    }
     if (cache.promise) {
       cache.promise
         .then((items) => {
-          if (!cancelled) {
+          if (!cancelled && items.length > 0) {
             setProducts(items);
           }
         })
@@ -57,13 +53,15 @@ export function useProductsCatalog() {
         if (!res.ok) throw new Error("Failed to load products");
         const payload = await res.json();
         const items = normalizeItems(payload);
-        cache.data = items;
+        if (items.length > 0) {
+          cache.data = items;
+        }
+        cache.hasFetched = true;
         cache.error = null;
-        return cache.data;
+        return items;
       })
       .catch((err: any) => {
         cache.error = err?.message || "Failed to load products";
-        cache.data = null;
         return [];
       })
       .finally(() => {
@@ -74,7 +72,7 @@ export function useProductsCatalog() {
 
     fetcher
       .then((items) => {
-        if (!cancelled) {
+        if (!cancelled && items.length > 0) {
           setProducts(items);
         }
       })

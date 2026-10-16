@@ -11,7 +11,6 @@ import {
   Pause,
   ExternalLink,
   ShoppingBag,
-  Sparkles,
 } from "lucide-react";
 import type { FloatingVideoConfig } from "@/server/services/floating-video";
 

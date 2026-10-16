@@ -15,6 +15,7 @@ let siteOrigin = "https://www.cevonne.com";
 try {
   siteOrigin = new URL(configuredSiteOrigin).origin;
 } catch {
+  // Reload configuration timestamp: 1792067080
   // Keep the production default if the deployment environment is misconfigured.
 }
 
@@ -60,6 +61,7 @@ if (r2PublicBaseUrl) {
 const nextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
+  serverExternalPackages: ["@prisma/client", "@prisma/adapter-pg", "pg"],
   experimental: {
     optimizePackageImports: ["lucide-react"],
   },

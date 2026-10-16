@@ -103,7 +103,7 @@
       { "author": "Anjali K.", "rating": 4, "title": "Beautiful color", "comment": "Soft Peach is stunning and comfy. Needs a touch-up after meals.", "date": "September 12, 2025" },
       { "author": "Rohan M.", "rating": 5, "title": "Best lipstick I've ever bought", "comment": "Gifted Classic Mauve—texture and look are incredible.", "date": "September 10, 2025" }
     ],
-    "shipping": "Free shipping on orders above ?499",
+    "shipping": "Free shipping on orders above ?999",
     "returns": "Easy 7-day returns on unopened items.",
     "videoUrl": "intro1.mp4",
     "videoTitle": "Cevonne",
@@ -142,3 +142,4 @@
     ]
   }
 ]
+

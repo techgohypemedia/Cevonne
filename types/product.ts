@@ -51,6 +51,11 @@ export interface ProductShade {
   arAssetUrl?: string | null;
   arPreviewUrl?: string | null;
   arCode?: string | null;
+  imageUrl?: string | null;
+  image?: string | null;
+  thumb?: string | null;
+  quantity?: number | null;
+  isOutOfStock?: boolean;
   createdAt?: Date | string;
   updatedAt?: Date | string;
   inventory?: ProductInventory | null;

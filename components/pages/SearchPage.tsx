@@ -6,6 +6,7 @@ import { Link } from "@/lib/router";
 import { API_BASE, HAS_API_BASE } from "@/lib/api";
 import { DEFAULT_PRODUCT_IMAGE, resolveProductAsset } from "@/lib/assets";
 import type { Product } from "@/types/product";
+import CollectionPage from "@/components/pages/CollectionPage";
 
 const POPULAR_KEYWORDS = [
   "Matte Lipstick",
@@ -39,6 +40,20 @@ type SearchProduct = Omit<Product, "description" | "media" | "pricing" | "tags">
 type SearchApiResponse = SearchProduct[] | { data?: SearchProduct[] };
 
 export default function SearchPage() {
+    const [collectionParam, setCollectionParam] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            const params = new URLSearchParams(window.location.search);
+            const col = params.get("collection");
+            if (col) setCollectionParam(col);
+        }
+    }, []);
+
+    if (collectionParam) {
+        return <CollectionPage slug={collectionParam} />;
+    }
+
     const [query, setQuery] = useState("");
     const [results, setResults] = useState<SearchProduct[]>([]);
     const [isSearching, setIsSearching] = useState(false);

@@ -14,20 +14,26 @@ import {
   AlertTriangle,
   ArrowRight,
   Bold,
+  ChevronLeft,
+  ChevronRight,
   Eye,
   EyeOff,
+  GripVertical,
   ImageIcon,
   Italic,
+  Loader2,
   MoveDown,
   MoveUp,
   Plus,
   RemoveFormatting,
   ShieldCheck,
   Sparkles,
+  Star,
   Trash2,
   Underline,
   UploadCloud,
   Video,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -121,9 +127,19 @@ const optionalNumber = (value: unknown) => {
   return Number.isFinite(num) ? num : undefined;
 };
 
-const parseLines = (value: unknown) => {
+const parseLines = (value: unknown): string[] => {
   if (Array.isArray(value)) {
-    return value.map((item) => String(item).trim()).filter(Boolean);
+    return value
+      .map((item) => {
+        if (!item) return "";
+        if (typeof item === "string") return item === "[object Object]" ? "" : item.trim();
+        if (typeof item === "object") {
+          const l = (item as any).label ?? (item as any).name ?? (item as any).title ?? (item as any).text ?? "";
+          return typeof l === "string" && l !== "[object Object]" ? l.trim() : "";
+        }
+        return String(item).trim();
+      })
+      .filter((s) => Boolean(s) && s !== "[object Object]");
   }
 
   if (typeof value !== "string") return [];
@@ -131,7 +147,7 @@ const parseLines = (value: unknown) => {
   return value
     .split(/[\r\n,]+/)
     .map((item) => item.replace(/^[\s*-]+/, "").trim())
-    .filter(Boolean);
+    .filter((s) => Boolean(s) && s !== "[object Object]");
 };
 
 const parseCategoryPath = (value: unknown) => {
@@ -147,8 +163,21 @@ const parseCategoryPath = (value: unknown) => {
 };
 
 const joinLines = (value: unknown) => {
-  if (Array.isArray(value)) return value.map((item) => String(item)).join("\n");
-  if (typeof value === "string") return value;
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => {
+        if (!item) return "";
+        if (typeof item === "string") return item === "[object Object]" ? "" : item;
+        if (typeof item === "object") {
+          const l = (item as any).label ?? (item as any).name ?? (item as any).title ?? (item as any).text ?? "";
+          return typeof l === "string" && l !== "[object Object]" ? l : "";
+        }
+        return String(item);
+      })
+      .filter(Boolean)
+      .join("\n");
+  }
+  if (typeof value === "string") return value === "[object Object]" ? "" : value;
   return "";
 };
 
@@ -160,7 +189,7 @@ const plainTextFromHtml = (value: string) =>
     .replace(/\s+/g, " ")
     .trim();
 
-const inferMediaKind = (file: File | { type?: string | null } | string) => {
+const inferMediaKind = (file: File | { type?: string | null } | string): "image" | "video" => {
   const type = typeof file === "string" ? file : String(file.type || "");
   if (type.toLowerCase().startsWith("video/")) return "video";
   if (typeof file === "string") {
@@ -170,6 +199,20 @@ const inferMediaKind = (file: File | { type?: string | null } | string) => {
 };
 
 const mediaItemKey = (item: ProductMediaItem, index: number) => item.key || item.id || `media-${index}`;
+
+const normalizeMediaUrl = (url?: string | null): string => {
+  if (!url) return "";
+  const trimmed = url.trim();
+  try {
+    if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+      const parsed = new URL(trimmed);
+      return `${parsed.pathname}${parsed.search}`.replace(/\/+$/, "");
+    }
+  } catch {
+    // fallback
+  }
+  return trimmed.replace(/\/+$/, "");
+};
 
 const mediaUrlFromValue = (value: unknown) => {
   if (!value) return "";
@@ -252,6 +295,7 @@ type ShadeFormValue = {
   sku: string;
   price: string;
   quantity: string;
+  imageUrl?: string;
 };
 
 type IngredientFormValue = {
@@ -285,6 +329,7 @@ const createEmptyShade = (): ShadeFormValue => ({
   sku: "",
   price: "",
   quantity: "",
+  imageUrl: "",
 });
 
 const createEmptyIngredient = (): IngredientFormValue => ({
@@ -349,15 +394,28 @@ const mapMediaItemsFromProduct = (product?: Product | null): ProductMediaItem[] 
   if (!product) return [];
 
   const items: ProductMediaItem[] = [];
-  const seen = new Set<string>();
+  const seenUrls = new Set<string>();
+  const seenKeys = new Set<string>();
   const existingMedia = isRecord(product.media) ? product.media : {};
   const existingGallery = Array.isArray(existingMedia.gallery) ? existingMedia.gallery : [];
   const imageList = Array.isArray(product.images) ? product.images : [];
 
   const pushItem = (item: ProductMediaItem) => {
-    const key = item.key || item.url;
-    if (!key || seen.has(key)) return;
-    seen.add(key);
+    const cleanUrl = item.url?.trim() || "";
+    if (!cleanUrl) return;
+    const normUrl = normalizeMediaUrl(cleanUrl);
+
+    if (seenUrls.has(cleanUrl) || (normUrl && seenUrls.has(normUrl))) {
+      return;
+    }
+    if (item.key && seenKeys.has(item.key)) {
+      return;
+    }
+
+    seenUrls.add(cleanUrl);
+    if (normUrl) seenUrls.add(normUrl);
+    if (item.key) seenKeys.add(item.key);
+
     items.push(item);
   };
 
@@ -393,14 +451,28 @@ const mapMediaItemsFromProduct = (product?: Product | null): ProductMediaItem[] 
     (isRecord(product.experience) && isRecord(product.experience.hero) && String(product.experience.hero.image || "")) ||
     "";
 
-  if (heroUrl && !seen.has(heroUrl)) {
-    items.unshift({
-      id: generateId(),
-      url: heroUrl,
-      alt: product.name,
-      kind: inferMediaKind(heroUrl),
-      isPrimary: true,
-    });
+  if (heroUrl) {
+    const cleanHero = heroUrl.trim();
+    const normHero = normalizeMediaUrl(cleanHero);
+    const heroIdx = items.findIndex(
+      (it) => it.url === cleanHero || (normHero && normalizeMediaUrl(it.url) === normHero)
+    );
+    if (heroIdx > 0) {
+      const [heroItem] = items.splice(heroIdx, 1);
+      items.unshift(heroItem);
+    } else if (heroIdx === -1 && cleanHero) {
+      if (!seenUrls.has(cleanHero) && (!normHero || !seenUrls.has(normHero))) {
+        seenUrls.add(cleanHero);
+        if (normHero) seenUrls.add(normHero);
+        items.unshift({
+          id: generateId(),
+          url: cleanHero,
+          alt: product.name,
+          kind: inferMediaKind(cleanHero),
+          isPrimary: true,
+        });
+      }
+    }
   }
 
   if (!items.length) {
@@ -422,7 +494,7 @@ const mapMediaItemsFromProduct = (product?: Product | null): ProductMediaItem[] 
 
   return items.map((item, index) => ({
     ...item,
-    isPrimary: index === 0 ? true : item.isPrimary,
+    isPrimary: index === 0,
   }));
 };
 
@@ -438,6 +510,7 @@ const mapShadeRowsFromProduct = (product?: Product | null): ShadeFormValue[] => 
     sku: shade.sku || "",
     price: shade.price != null ? String(shade.price) : "",
     quantity: shade.inventory?.quantity != null ? String(shade.inventory.quantity) : "",
+    imageUrl: (shade as any).imageUrl || (shade as any).image || (shade as any).thumb || "",
   }));
 };
 
@@ -553,9 +626,20 @@ const compactObject = (value: Record<string, unknown>) => {
   return entries.length ? Object.fromEntries(entries) : undefined;
 };
 
-const buildImageList = (mediaItems: ProductMediaItem[], fallbackName: string) =>
-  mediaItems
+const buildImageList = (mediaItems: ProductMediaItem[], fallbackName: string) => {
+  const seenUrls = new Set<string>();
+  return mediaItems
     .filter((item) => item.kind !== "video")
+    .filter((item) => {
+      const clean = item.url?.trim() || "";
+      const norm = normalizeMediaUrl(clean);
+      if (!clean || seenUrls.has(clean) || (norm && seenUrls.has(norm))) {
+        return false;
+      }
+      seenUrls.add(clean);
+      if (norm) seenUrls.add(norm);
+      return true;
+    })
     .map((item, index) => ({
       id: mediaItemKey(item, index),
       url: item.url,
@@ -563,42 +647,36 @@ const buildImageList = (mediaItems: ProductMediaItem[], fallbackName: string) =>
       key: item.key,
       storageKey: item.key,
       kind: "IMAGE",
-      isPrimary: item.isPrimary,
+      isPrimary: index === 0,
       mimeType: item.mimeType,
       fileName: item.fileName,
     }));
+};
 
 const buildMediaGallery = (
   mediaItems: ProductMediaItem[],
-  manualUrls: string[],
   productName: string
 ) => {
-  const items = [
-    ...mediaItems.map((item, index) => ({
-      id: mediaItemKey(item, index),
-      url: item.url,
-      key: item.key,
-      storageKey: item.key,
-      alt: item.alt || productName,
-      kind: item.kind === "video" ? "VIDEO" : "IMAGE",
-      isPrimary: item.isPrimary,
-      mimeType: item.mimeType,
-      fileName: item.fileName,
-    })),
-    ...manualUrls.map((url, index) => ({
-      id: `manual-${index}`,
-      url,
-      alt: productName,
-      kind: inferMediaKind(url).toUpperCase(),
-      isPrimary: false,
-    })),
-  ];
+  const items = mediaItems.map((item, index) => ({
+    id: mediaItemKey(item, index),
+    url: item.url,
+    key: item.key,
+    storageKey: item.key,
+    alt: item.alt || productName,
+    kind: item.kind === "video" ? "VIDEO" : "IMAGE",
+    isPrimary: index === 0,
+    mimeType: item.mimeType,
+    fileName: item.fileName,
+  }));
 
   const deduped: typeof items = [];
-  const seen = new Set<string>();
+  const seenUrls = new Set<string>();
   for (const item of items) {
-    if (!item.url || seen.has(item.url)) continue;
-    seen.add(item.url);
+    const clean = item.url?.trim() || "";
+    const norm = normalizeMediaUrl(clean);
+    if (!clean || seenUrls.has(clean) || (norm && seenUrls.has(norm))) continue;
+    seenUrls.add(clean);
+    if (norm) seenUrls.add(norm);
     deduped.push(item);
   }
   return deduped;
@@ -734,8 +812,9 @@ function ProductMediaPreview({ item, className }: { item: ProductMediaItem; clas
     <img
       src={item.url}
       alt={item.alt || item.fileName || "Product media"}
-      className={cn("rounded-xl border border-border/60 object-cover", className || "h-32 w-full")}
+      className={cn("rounded-xl border border-border/60 object-cover pointer-events-none select-none", className || "h-32 w-full")}
       onError={() => setFailed(true)}
+      draggable={false}
     />
   );
 }
@@ -852,7 +931,7 @@ function ProductDetailsCard({
   descriptionValue: string;
   onDescriptionChange: (value: string) => void;
 }) {
-  const { register, setValue, watch, getValues } = form;
+  const { register, setValue, watch, getValues, clearErrors, formState: { errors } } = form;
 
   return (
     <Card className="gap-0 overflow-hidden rounded-2xl border bg-white py-0 shadow-sm">
@@ -871,20 +950,31 @@ function ProductDetailsCard({
         <div className="grid gap-4">
           <div className="rounded-2xl border border-border/60 bg-[#fcfaf9] p-4">
             <div className="space-y-2">
-            <Label htmlFor="product-name" className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Product name</Label>
-            <Input
-              id="product-name"
-              autoComplete="off"
-              className="h-12 rounded-xl bg-white text-base font-medium"
-              {...register("name", {
-                onChange: (event) => {
-                  if (!manualSlug) {
-                    setValue("slug", slugify(event.target.value), { shouldDirty: true });
-                  }
-                },
-              })}
-              placeholder="Product name"
-            />
+              <Label htmlFor="product-name" className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                Product name <span className="text-red-500 font-bold">*</span>
+              </Label>
+              <Input
+                id="product-name"
+                autoComplete="off"
+                className={cn(
+                  "h-12 rounded-xl bg-white text-base font-medium",
+                  errors.name && "border-red-500 focus-visible:ring-red-400"
+                )}
+                {...register("name", {
+                  required: "Product name is required",
+                  onChange: (event) => {
+                    clearErrors("name");
+                    if (!manualSlug) {
+                      clearErrors("slug");
+                      setValue("slug", slugify(event.target.value), { shouldDirty: true, shouldValidate: true });
+                    }
+                  },
+                })}
+                placeholder="Product name"
+              />
+              {errors.name && (
+                <p className="mt-1 text-xs font-medium text-red-500">{errors.name.message}</p>
+              )}
             </div>
           </div>
 
@@ -900,14 +990,18 @@ function ProductDetailsCard({
 
           <div className="rounded-2xl border border-border/60 bg-[#fcfaf9] p-4">
             <div className="flex items-center justify-between gap-3">
-              <Label htmlFor="product-slug" className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">URL handle</Label>
+              <Label htmlFor="product-slug" className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                URL handle <span className="text-red-500 font-bold">*</span>
+              </Label>
               <button
                 type="button"
                 className="rounded-full border border-[#4b0d4b]/20 bg-white px-3 py-1 text-xs font-semibold text-[#4b0d4b] transition-colors hover:bg-[#fbf7f4]"
                 onClick={() => {
-                  onManualSlugChange(!manualSlug);
-                  if (manualSlug) {
-                    setValue("slug", slugify(getValues("name") || ""), { shouldDirty: true });
+                  const nextManual = !manualSlug;
+                  onManualSlugChange(nextManual);
+                  clearErrors("slug");
+                  if (!nextManual) {
+                    setValue("slug", slugify(getValues("name") || ""), { shouldDirty: true, shouldValidate: true });
                   }
                 }}
               >
@@ -917,16 +1011,25 @@ function ProductDetailsCard({
             <Input
               id="product-slug"
               autoComplete="off"
-              className="mt-3 h-11 rounded-xl bg-white font-medium"
+              className={cn(
+                "mt-3 h-11 rounded-xl bg-white font-medium",
+                errors.slug && "border-red-500 focus-visible:ring-red-400"
+              )}
               {...register("slug", {
+                required: "URL handle is required",
                 onChange: (event) => {
                   onManualSlugChange(true);
-                  setValue("slug", slugify(event.target.value), { shouldDirty: true });
+                  clearErrors("slug");
+                  setValue("slug", slugify(event.target.value), { shouldDirty: true, shouldValidate: true });
                 },
               })}
               placeholder="product-name"
             />
-            <p className="mt-2 text-xs text-muted-foreground">Used in the product URL and SEO metadata.</p>
+            {errors.slug ? (
+              <p className="mt-1 text-xs font-medium text-red-500">{errors.slug.message}</p>
+            ) : (
+              <p className="mt-2 text-xs text-muted-foreground">Used in the product URL and SEO metadata.</p>
+            )}
           </div>
         </div>
       </CardContent>
@@ -1535,16 +1638,39 @@ function ProductAdvancedContent({
 
 function ProductVariantsCard({
   form,
+  request,
+  galleryImages = [],
 }: {
   form: ReturnType<typeof useForm<ProductEditorValues>>;
+  request: ProductEditorPageProps["request"];
+  galleryImages?: string[];
 }) {
-  const { control, register } = form;
+  const { control, register, setValue } = form;
   const { fields, append, remove, move } = useFieldArray({
     control,
     name: "shades",
   });
   const shades = form.watch("shades") || [];
   const totalShadeQuantity = shades.reduce((sum: number, shade: ShadeFormValue) => sum + (Number(shade.quantity) || 0), 0);
+  const [uploadingShadeIndex, setUploadingShadeIndex] = useState<number | null>(null);
+
+  const handleUploadShadeImage = async (index: number, file: File) => {
+    if (!file) return;
+    if (file.size > MAX_UPLOAD_BYTES) {
+      toast.error("Image file must be under 10MB");
+      return;
+    }
+    setUploadingShadeIndex(index);
+    try {
+      const { publicUrl } = await uploadProductMedia(request, file);
+      setValue(`shades.${index}.imageUrl`, publicUrl, { shouldDirty: true });
+      toast.success(`Photo uploaded for ${shades[index]?.name || `Shade ${index + 1}`}`);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to upload shade photo");
+    } finally {
+      setUploadingShadeIndex(null);
+    }
+  };
 
   return (
     <Card className="gap-0 overflow-hidden rounded-2xl border bg-white py-0 shadow-sm">
@@ -1552,7 +1678,7 @@ function ProductVariantsCard({
         <div className="flex items-start justify-between gap-3">
           <div>
             <CardTitle className="text-base font-semibold text-foreground">Shade variants</CardTitle>
-            <CardDescription>Add shades with color, SKU, price, and stock.</CardDescription>
+            <CardDescription>Add shades with lipstick photos, color swatch, SKU, price, and stock.</CardDescription>
           </div>
           <Button type="button" className="h-10 rounded-xl bg-[#4b0d4b] px-4 text-white hover:bg-[#3a083a]" onClick={() => append(createEmptyShade())}>
             <Plus className="mr-2 h-4 w-4" />
@@ -1619,13 +1745,13 @@ function ProductVariantsCard({
                             type="color"
                             value={field.value || "#a21caf"}
                             onChange={(event) => field.onChange(event.target.value)}
-                            className="h-11 w-16 rounded-xl border border-border/60 bg-white p-1"
+                            className="h-11 w-16 rounded-xl border border-border/60 bg-white p-1 cursor-pointer"
                           />
                           <Input
                             value={field.value || ""}
                             onChange={(event) => field.onChange(event.target.value)}
                             placeholder="#a21caf"
-                            className="h-11 rounded-xl bg-white"
+                            className="h-11 rounded-xl bg-white font-mono text-xs uppercase"
                           />
                         </div>
                       )}
@@ -1636,11 +1762,113 @@ function ProductVariantsCard({
                     <Input id={`shade-${index}-quantity`} type="number" min="0" className="h-11 rounded-xl bg-white" {...register(`shades.${index}.quantity`)} placeholder="150" />
                   </div>
                   <div className="md:col-span-2 flex items-center gap-3 rounded-2xl bg-[#4b0d4b] px-4 py-3 text-white">
-                    <span className="h-10 w-10 shrink-0 rounded-xl border border-white/25" style={{ backgroundColor: shades[index]?.hexColor || "#a21caf" }} />
-                    <div className="min-w-0">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/65">Storefront shade</p>
-                      <p className="mt-1 truncate text-sm font-semibold">{shades[index]?.name || "Unnamed shade"}</p>
+                    <span className="h-11 w-11 shrink-0 rounded-xl border border-white/25 shadow-inner" style={{ backgroundColor: shades[index]?.hexColor || "#a21caf" }} />
+                    {shades[index]?.imageUrl ? (
+                      <img
+                        src={shades[index].imageUrl}
+                        alt="Shade preview"
+                        className="h-11 w-11 shrink-0 rounded-xl object-cover border border-white/25 bg-white/10"
+                      />
+                    ) : (
+                      <div className="h-11 w-11 shrink-0 rounded-xl border border-dashed border-white/30 flex items-center justify-center text-white/50 text-[10px]">
+                        No Pic
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/65">Storefront preview</p>
+                      <p className="mt-0.5 truncate text-sm font-semibold">{shades[index]?.name || "Unnamed shade"}</p>
                       <p className="text-xs text-white/65">{shades[index]?.sku || "No SKU"}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Shade Photo Upload & Selection */}
+                <div className="mt-4 rounded-xl border border-border/60 bg-white p-3.5 shadow-sm">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="relative size-12 shrink-0 overflow-hidden rounded-xl border border-border/80 bg-neutral-100 flex items-center justify-center shadow-inner">
+                        {shades[index]?.imageUrl ? (
+                          <img
+                            src={shades[index].imageUrl}
+                            alt={shades[index]?.name || "Shade"}
+                            className="size-full object-cover"
+                          />
+                        ) : (
+                          <ImageIcon className="size-5 text-muted-foreground/40" />
+                        )}
+                      </div>
+                      <div className="space-y-0.5">
+                        <p className="text-xs font-semibold text-foreground">Lipstick Shade Photo</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {shades[index]?.imageUrl
+                            ? "This photo will display on the storefront when a user clicks this shade."
+                            : "Upload or pick a photo that shows this exact lipstick shade."}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <label className="cursor-pointer">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-9 gap-1.5 rounded-xl border-border/70 bg-[#fcfaf9] text-xs font-medium hover:bg-neutral-100"
+                          asChild
+                          disabled={uploadingShadeIndex === index}
+                        >
+                          <span>
+                            {uploadingShadeIndex === index ? (
+                              <Loader2 className="size-3.5 animate-spin" />
+                            ) : (
+                              <UploadCloud className="size-3.5 text-[#4b0d4b]" />
+                            )}
+                            {shades[index]?.imageUrl ? "Change photo" : "Upload photo"}
+                          </span>
+                        </Button>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) void handleUploadShadeImage(index, file);
+                            e.target.value = "";
+                          }}
+                        />
+                      </label>
+
+                      {galleryImages && galleryImages.length > 0 ? (
+                        <Select
+                          onValueChange={(val) => {
+                            if (val) setValue(`shades.${index}.imageUrl`, val, { shouldDirty: true });
+                          }}
+                        >
+                          <SelectTrigger className="h-9 w-fit gap-1 rounded-xl text-xs bg-[#fcfaf9]">
+                            <SelectValue placeholder="Gallery" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {galleryImages.map((imgUrl, gIdx) => (
+                              <SelectItem key={gIdx} value={imgUrl} className="text-xs">
+                                Gallery photo #{gIdx + 1}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : null}
+
+                      {shades[index]?.imageUrl ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-9 w-9 rounded-xl text-muted-foreground hover:bg-red-50 hover:text-red-600"
+                          onClick={() => setValue(`shades.${index}.imageUrl`, "", { shouldDirty: true })}
+                          title="Remove photo"
+                        >
+                          <X className="size-4" />
+                        </Button>
+                      ) : null}
                     </div>
                   </div>
                 </div>
@@ -1664,33 +1892,186 @@ function ProductMediaCard({
   uploadQueue,
   onFiles,
   isUploading,
+  onReorder,
+  onRemove,
+  onSetPrimary,
 }: {
   productName: string;
   mediaItems: ProductMediaItem[];
   uploadQueue: UploadQueueItem[];
   onFiles: (files: File[]) => void;
   isUploading: boolean;
+  onReorder: (fromIndex: number, toIndex: number) => void;
+  onRemove: (index: number) => void;
+  onSetPrimary: (index: number) => void;
 }) {
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
+  const handleDragStart = (e: DragEvent<HTMLDivElement>, index: number) => {
+    e.dataTransfer.setData("text/plain", String(index));
+    e.dataTransfer.effectAllowed = "move";
+    setDraggedIndex(index);
+  };
+
+  const handleDragOver = (e: DragEvent<HTMLDivElement>, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (dragOverIndex !== index) {
+      setDragOverIndex(index);
+    }
+  };
+
+  const handleDragLeave = (e: DragEvent<HTMLDivElement>, index: number) => {
+    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+    if (dragOverIndex === index) {
+      setDragOverIndex(null);
+    }
+  };
+
+  const handleDrop = (e: DragEvent<HTMLDivElement>, targetIndex: number) => {
+    e.preventDefault();
+    const data = e.dataTransfer.getData("text/plain");
+    const fromIndex = data !== "" ? Number(data) : draggedIndex;
+    if (fromIndex != null && !isNaN(fromIndex) && fromIndex !== targetIndex) {
+      onReorder(fromIndex, targetIndex);
+    }
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
   return (
     <Card className="gap-0 overflow-hidden rounded-2xl border bg-white py-0 shadow-sm">
       <CardHeader className="border-b px-6 !py-3">
         <div className="flex items-start justify-between gap-3">
           <div>
             <CardTitle className="text-base font-semibold text-foreground">Media</CardTitle>
-            <CardDescription>Upload product images and videos for the storefront.</CardDescription>
+            <CardDescription>Upload product images and videos for the storefront. Drag images to reorder (1st is cover).</CardDescription>
           </div>
           <Badge variant="outline" className="rounded-full uppercase tracking-[0.22em]">
-            {mediaItems.length} shown
+            {mediaItems.length} {mediaItems.length === 1 ? "file" : "files"}
           </Badge>
         </div>
       </CardHeader>
       <CardContent className="space-y-3 px-6 py-3">
         {mediaItems.length ? (
-          <div className="flex flex-wrap items-start gap-2">
-            <ProductMediaPreview item={mediaItems[0]} className="h-48 w-48 shrink-0 rounded-lg bg-white" />
-            {mediaItems.slice(1).map((item, index) => (
-              <ProductMediaPreview key={mediaItemKey(item, index + 1)} item={item} className="h-24 w-24 shrink-0 rounded-lg bg-white" />
-            ))}
+          <div className="flex flex-wrap items-start gap-2.5">
+            {mediaItems.map((item, index) => {
+              const isHero = index === 0;
+              const isDragging = draggedIndex === index;
+              const isDragOver = dragOverIndex === index && draggedIndex !== index;
+
+              return (
+                <div
+                  key={mediaItemKey(item, index)}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, index)}
+                  onDragOver={(e) => handleDragOver(e, index)}
+                  onDragLeave={(e) => handleDragLeave(e, index)}
+                  onDrop={(e) => handleDrop(e, index)}
+                  onDragEnd={handleDragEnd}
+                  className={cn(
+                    "group relative shrink-0 overflow-hidden rounded-xl border bg-white transition-all duration-150 select-none cursor-grab active:cursor-grabbing",
+                    isHero ? "h-48 w-48 shadow-sm" : "h-24 w-24",
+                    isDragging && "opacity-40 scale-95 border-dashed border-[#4b0d4b] ring-2 ring-[#4b0d4b]/30",
+                    isDragOver && "ring-2 ring-[#4b0d4b] ring-offset-2 scale-[1.03] border-[#4b0d4b] shadow-lg",
+                    !isDragging && !isDragOver && "border-border/70 hover:border-[#4b0d4b]/50 hover:shadow-md"
+                  )}
+                  title={`Position ${index + 1}: ${isHero ? "Cover / Hero image" : "Gallery image"}. Drag to reorder.`}
+                >
+                  {/* Position Badge */}
+                  {isHero ? (
+                    <div className="absolute top-1.5 left-1.5 z-20 flex items-center gap-1 rounded bg-[#4b0d4b] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white shadow-sm pointer-events-none">
+                      <Star className="h-2.5 w-2.5 fill-current" />
+                      <span>1st Cover</span>
+                    </div>
+                  ) : (
+                    <div className="absolute top-1.5 left-1.5 z-20 rounded bg-black/75 backdrop-blur-sm px-1.5 py-0.5 text-[9px] font-bold text-white shadow-sm pointer-events-none">
+                      #{index + 1}
+                    </div>
+                  )}
+
+                  {/* Image/Video Preview */}
+                  <ProductMediaPreview item={item} className="h-full w-full object-cover rounded-xl" />
+
+                  {/* Hover Overlay Controls */}
+                  <div className="absolute inset-0 z-20 flex flex-col justify-between bg-black/40 p-1.5 opacity-0 backdrop-blur-[1px] transition-opacity duration-150 group-hover:opacity-100">
+                    {/* Top row: drag indicator & delete button */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-0.5 rounded bg-black/60 px-1 py-0.5 text-[9px] font-medium text-white shadow-sm">
+                        <GripVertical className="h-3 w-3" />
+                        <span>Drag</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onRemove(index);
+                        }}
+                        title="Delete image"
+                        className="flex h-5 w-5 items-center justify-center rounded bg-black/60 text-white shadow-sm transition-colors hover:bg-red-600 hover:text-white"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+
+                    {/* Bottom row: reorder buttons */}
+                    <div className="flex items-center justify-between gap-1">
+                      {index > 0 ? (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onReorder(index, index - 1);
+                          }}
+                          title="Move left (earlier)"
+                          className="flex h-5 w-5 items-center justify-center rounded bg-black/60 text-white shadow-sm transition-colors hover:bg-[#4b0d4b]"
+                        >
+                          <ChevronLeft className="h-3 w-3" />
+                        </button>
+                      ) : (
+                        <div />
+                      )}
+
+                      {!isHero && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSetPrimary(index);
+                          }}
+                          title="Make 1st (Cover)"
+                          className="rounded bg-black/60 px-1.5 py-0.5 text-[9px] font-semibold text-white shadow-sm transition-colors hover:bg-[#4b0d4b]"
+                        >
+                          Make 1st
+                        </button>
+                      )}
+
+                      {index < mediaItems.length - 1 ? (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onReorder(index, index + 1);
+                          }}
+                          title="Move right (later)"
+                          className="flex h-5 w-5 items-center justify-center rounded bg-black/60 text-white shadow-sm transition-colors hover:bg-[#4b0d4b]"
+                        >
+                          <ChevronRight className="h-3 w-3" />
+                        </button>
+                      ) : (
+                        <div />
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
             <R2UploadDropzone compact disabled={isUploading} isUploading={isUploading} onFiles={onFiles} />
           </div>
         ) : (
@@ -1722,7 +2103,11 @@ function ProductMediaCard({
             <p className="text-sm font-medium text-foreground">No media uploaded yet.</p>
             <p className="mt-1 text-xs text-muted-foreground">Upload product images or videos to build the storefront gallery.</p>
           </div>
-        ) : null}
+        ) : (
+          <p className="text-[11px] text-muted-foreground">
+            Drag any image tile to change display order. The 1st image is used as the product cover on store and collection pages.
+          </p>
+        )}
       </CardContent>
     </Card>
   );
@@ -1871,35 +2256,46 @@ export function ProductEditorPage({
 
   const productName = watch("name");
   const saveForm = handleSubmit(async (values) => {
+    form.clearErrors(["slug", "name"]);
     setIsSaving(true);
     try {
+      if (!values.name?.trim()) {
+        form.setError("name", { type: "manual", message: "Product name is required" });
+        toast.error("Product name is required.");
+        setIsSaving(false);
+        return;
+      }
       const slugValue = values.slug?.trim() || slugify(values.name || "");
+      if (!slugValue) {
+        form.setError("slug", { type: "manual", message: "URL handle is required" });
+        toast.error("URL handle is required.");
+        setIsSaving(false);
+        return;
+      }
       const slugSafe = slugify(slugValue);
       const existingMedia = isRecord(product?.media) ? product.media : {};
       const existingExperience = isRecord(product?.experience) ? product.experience : {};
       const existingPricing = isRecord(product?.pricing) ? product.pricing : {};
       const existingSize = isRecord(product?.size) ? product.size : {};
       const existingIngredients = isRecord(product?.ingredients) ? product.ingredients : {};
-      const galleryUrls = parseLines(values.galleryUrls);
-      const manualHero = optionalString(values.heroImageUrl) || undefined;
-      const primaryMedia = mediaItems.find((item) => item.isPrimary && item.kind !== "video") || mediaItems.find((item) => item.kind !== "video") || mediaItems[0];
-      const heroImageUrl = manualHero || primaryMedia?.url || values.heroImageUrl || "";
-      const galleryItems = buildMediaGallery(mediaItems, galleryUrls, values.name || "Cevonne product");
+      const primaryMedia =
+        mediaItems.find((item) => item.isPrimary && item.kind !== "video") ||
+        mediaItems.find((item) => item.kind !== "video") ||
+        mediaItems[0];
+      const heroImageUrl = primaryMedia?.url || "";
+      const galleryItems = buildMediaGallery(mediaItems, values.name || "Cevonne product");
       const imageItems = buildImageList(mediaItems, values.name || "Cevonne product");
-      const imageUrls = Array.from(new Set([
-        heroImageUrl,
-        ...imageItems.map((item) => item.url),
-        ...galleryUrls.filter((url) => inferMediaKind(url) !== "video"),
-      ])).filter(Boolean);
+      const imageUrls = imageItems.map((item) => item.url).filter(Boolean);
 
       const shadePayload = (values.shades || [])
-        .filter((shade) => shade.name.trim() || shade.quantity !== "" || shade.price !== "" || shade.sku?.trim())
+        .filter((shade) => shade.name.trim() || shade.quantity !== "" || shade.price !== "" || shade.sku?.trim() || shade.imageUrl?.trim())
         .map((shade, index) => ({
           name: shade.name.trim() || `Shade ${index + 1}`,
           hexColor: shade.hexColor.trim() || "#a21caf",
           sku: optionalString(shade.sku),
           price: optionalNumber(shade.price),
           quantity: optionalNumber(shade.quantity) != null ? Math.max(0, Math.round(optionalNumber(shade.quantity) || 0)) : undefined,
+          imageUrl: optionalString(shade.imageUrl),
         }));
 
       const ingredientsPayload = (values.heroIngredients || [])
@@ -2013,19 +2409,27 @@ export function ProductEditorPage({
           ingredients,
           media: mediaPayload,
           experience: experiencePayload,
-          images: imageUrls.length
-            ? imageUrls.map((url) => ({
-                url,
-                alt: values.name || productName || "Cevonne product",
-              }))
-            : undefined,
+          images: imageUrls.map((url) => ({
+            url,
+            alt: values.name || productName || "Cevonne product",
+          })),
           shades: shadePayload.length ? shadePayload : undefined,
         }),
       });
 
       if (!response.ok) {
         const body = await response.json().catch(() => null);
-        throw new Error(body?.message || "Unable to save product");
+        const errorMsg = body?.message || "Unable to save product";
+        if (body?.target?.includes("slug") || errorMsg.toLowerCase().includes("slug") || errorMsg.toLowerCase().includes("url handle")) {
+          form.setError("slug", {
+            type: "manual",
+            message: "A product with this URL handle / name already exists. Please edit the URL handle.",
+          });
+          setManualSlug(true);
+        }
+        toast.error(errorMsg);
+        setIsSaving(false);
+        return;
       }
 
       refresh?.();
@@ -2033,7 +2437,7 @@ export function ProductEditorPage({
       await Promise.resolve(onSuccess());
     } catch (error) {
       console.error(error);
-      toast.error("Unable to save product. Please try again.");
+      toast.error(error instanceof Error ? error.message : "Unable to save product. Please try again.");
     } finally {
       setIsSaving(false);
     }
@@ -2068,19 +2472,24 @@ export function ProductEditorPage({
           setUploadQueue((prev) => prev.map((item) => (item.id === queueId ? { ...item, progress, status: "uploading" } : item)));
         });
 
-        setMediaItems((prev) => [
-          ...prev,
-          {
-            id: generateId(),
-            url: upload.publicUrl,
-            key: upload.key,
-            fileName: file.name,
-            mimeType: file.type,
-            alt: file.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").trim(),
-            kind: inferMediaKind(file),
-            isPrimary: !prev.some((item) => item.isPrimary),
-          },
-        ]);
+        setMediaItems((prev) => {
+          const next = [
+            ...prev,
+            {
+              id: generateId(),
+              url: upload.publicUrl,
+              key: upload.key,
+              fileName: file.name,
+              mimeType: file.type,
+              alt: file.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").trim(),
+              kind: inferMediaKind(file),
+              isPrimary: !prev.some((item) => item.isPrimary),
+            },
+          ];
+          setValue("galleryUrls", next.map((m) => m.url).join("\n"), { shouldDirty: true });
+          setValue("heroImageUrl", next[0]?.url || "", { shouldDirty: true });
+          return next;
+        });
 
         setUploadQueue((prev) => prev.map((item) => (item.id === queueId ? { ...item, progress: 100, status: "done" } : item)));
       }
@@ -2093,6 +2502,43 @@ export function ProductEditorPage({
       window.setTimeout(() => setUploadQueue([]), 1200);
       setIsUploading(false);
     }
+  };
+
+  const handleReorderMedia = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) return;
+    setMediaItems((prev) => {
+      const updated = [...prev];
+      const [moved] = updated.splice(fromIndex, 1);
+      if (!moved) return prev;
+      updated.splice(toIndex, 0, moved);
+      const mapped = updated.map((item, idx) => ({
+        ...item,
+        isPrimary: idx === 0,
+      }));
+      setValue("galleryUrls", mapped.map((m) => m.url).join("\n"), { shouldDirty: true });
+      setValue("heroImageUrl", mapped[0]?.url || "", { shouldDirty: true });
+      return mapped;
+    });
+    toast.success("Media order updated");
+  };
+
+  const handleRemoveMedia = (index: number) => {
+    setMediaItems((prev) => {
+      const updated = prev.filter((_, idx) => idx !== index);
+      const mapped = updated.map((item, idx) => ({
+        ...item,
+        isPrimary: idx === 0,
+      }));
+      setValue("galleryUrls", mapped.map((m) => m.url).join("\n"), { shouldDirty: true });
+      setValue("heroImageUrl", mapped[0]?.url || "", { shouldDirty: true });
+      return mapped;
+    });
+    toast.info("Media removed");
+  };
+
+  const handleSetPrimaryMedia = (index: number) => {
+    if (index === 0) return;
+    handleReorderMedia(index, 0);
   };
 
   const submitPublish = () => {
@@ -2149,11 +2595,18 @@ export function ProductEditorPage({
                   uploadQueue={uploadQueue}
                   onFiles={handleMediaFiles}
                   isUploading={isUploading}
+                  onReorder={handleReorderMedia}
+                  onRemove={handleRemoveMedia}
+                  onSetPrimary={handleSetPrimaryMedia}
                 />
 
                 <ProductPricingCard form={form} />
                 <ProductInventoryCard form={form} />
-                <ProductVariantsCard form={form} />
+                <ProductVariantsCard
+                  form={form}
+                  request={request}
+                  galleryImages={mediaItems.filter((item) => item.kind !== "video").map((item) => item.url)}
+                />
                 <ProductAdvancedContent form={form} />
                 <SeoPreviewCard form={form} />
               </div>

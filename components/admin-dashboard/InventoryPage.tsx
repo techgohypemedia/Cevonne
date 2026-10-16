@@ -40,7 +40,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Link, useNavigate } from "@/lib/router";
+import { resolveProductAsset } from "@/lib/assets";
 
 const defaultRequest = (url: string, options?: RequestInit) => fetch(url, options);
 const numberFormatter = new Intl.NumberFormat("en-IN");
@@ -64,6 +66,7 @@ type InventoryRow = {
   status: InventoryStatus;
   color: string;
   sku: string;
+  image?: string;
   updatedAt: string;
 };
 
@@ -231,9 +234,17 @@ function matchesFilter(row: InventoryRow, query: string, levelFilter: InventoryF
   return matchesSearch && matchesLevel && matchesCollection;
 }
 
-function normalizeInventoryRows(liveRows: any[] | null | undefined) {
+function normalizeInventoryRows(liveRows: any[] | null | undefined, productsList: any[] | null | undefined = null) {
   if (!Array.isArray(liveRows) || !liveRows.length) {
     return [];
+  }
+
+  const productMap = new Map<string, any>();
+  if (Array.isArray(productsList)) {
+    for (const p of productsList) {
+      if (p?.id) productMap.set(p.id, p);
+      if (p?.name) productMap.set(String(p.name).toLowerCase().trim(), p);
+    }
   }
 
   return liveRows.slice(0, 8).map((item: any, index: number) => {
@@ -244,6 +255,15 @@ function normalizeInventoryRows(liveRows: any[] | null | undefined) {
     const quantity = Number(item?.quantity ?? item?.stock ?? item?.inventory?.quantity ?? fallback.quantity) || 0;
     const threshold = Number(item?.threshold ?? item?.lowStockThreshold ?? fallback.threshold) || fallback.threshold;
     const productId = item?.shade?.product?.id || item?.product?.id || item?.productId || fallback.productId;
+
+    const matchedProduct = productId ? productMap.get(productId) : (productName ? productMap.get(String(productName).toLowerCase().trim()) : null);
+    const rawImage =
+      item?.shade?.product?.images?.[0]?.url ||
+      item?.product?.images?.[0]?.url ||
+      matchedProduct?.images?.[0]?.url ||
+      item?.image ||
+      "";
+    const image = rawImage ? resolveProductAsset(rawImage, rawImage) : "";
 
     return {
       id: item?.id || `inv-${index}`,
@@ -256,6 +276,7 @@ function normalizeInventoryRows(liveRows: any[] | null | undefined) {
       status: getInventoryStatus(quantity, threshold),
       color: item?.hexColor || item?.shade?.hexColor || fallback.color,
       sku: item?.shade?.sku || item?.sku || fallback.sku,
+      image,
       updatedAt: item?.updatedAt || item?.createdAt || fallback.updatedAt,
     } satisfies InventoryRow;
   });
@@ -406,18 +427,30 @@ function InventoryRow({
   onAdjustStock: (row: InventoryRow) => void;
 }) {
   const initials = initialsFrom(row.product);
+  const [imgError, setImgError] = useState(false);
 
   return (
     <TableRow className="group hover:bg-primary/5">
       <TableCell className="px-4 py-4 align-middle">
         <div className="flex items-center gap-3">
-          <div
-            className="flex size-11 shrink-0 items-center justify-center rounded-2xl border border-border/60 shadow-sm"
-            style={{ backgroundColor: `${row.color}14` }}
-          >
-            <span className="text-[11px] font-semibold uppercase tracking-[0.2em]" style={{ color: row.color }}>
-              {initials}
-            </span>
+          <div className="relative size-11 shrink-0 overflow-hidden rounded-2xl border border-border/60 shadow-sm">
+            {row.image && !imgError ? (
+              <img
+                src={row.image}
+                alt={row.product}
+                className="size-full rounded-2xl object-cover"
+                onError={() => setImgError(true)}
+              />
+            ) : (
+              <div
+                className="flex size-full items-center justify-center rounded-2xl"
+                style={{ backgroundColor: `${row.color}14` }}
+              >
+                <span className="text-[11px] font-semibold uppercase tracking-[0.2em]" style={{ color: row.color }}>
+                  {initials}
+                </span>
+              </div>
+            )}
           </div>
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-foreground">{row.product}</p>
@@ -463,17 +496,29 @@ function InventoryCompactCard({
   onAdjustStock: (row: InventoryRow) => void;
 }) {
   const initials = initialsFrom(row.product);
+  const [imgError, setImgError] = useState(false);
 
   return (
     <div className="rounded-2xl border border-border/60 bg-white p-4 shadow-sm transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-md">
       <div className="flex items-start gap-3">
-        <div
-          className="flex size-11 shrink-0 items-center justify-center rounded-2xl border border-border/60 shadow-sm"
-          style={{ backgroundColor: `${row.color}14` }}
-        >
-          <span className="text-[11px] font-semibold uppercase tracking-[0.2em]" style={{ color: row.color }}>
-            {initials}
-          </span>
+        <div className="relative size-11 shrink-0 overflow-hidden rounded-2xl border border-border/60 shadow-sm">
+          {row.image && !imgError ? (
+            <img
+              src={row.image}
+              alt={row.product}
+              className="size-full rounded-2xl object-cover"
+              onError={() => setImgError(true)}
+            />
+          ) : (
+            <div
+              className="flex size-full items-center justify-center rounded-2xl"
+              style={{ backgroundColor: `${row.color}14` }}
+            >
+              <span className="text-[11px] font-semibold uppercase tracking-[0.2em]" style={{ color: row.color }}>
+                {initials}
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="min-w-0 flex-1 space-y-2">
@@ -680,8 +725,8 @@ export default function InventoryPage() {
   const { authFetch, isAdmin } = useAuth();
   const request = authFetch ?? defaultRequest;
   const navigate = useNavigate();
-  const { collections, inventory, lowInventory, loading, refresh, stats } = useDashboardData(true, request, isAdmin, {
-    resources: ["collections", "inventory", "lowInventory"],
+  const { collections, inventory, lowInventory, products, loading, refresh, stats } = useDashboardData(true, request, isAdmin, {
+    resources: ["collections", "inventory", "lowInventory", "products"],
   });
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -697,7 +742,10 @@ export default function InventoryPage() {
     return () => window.removeEventListener("dashboard:data:refresh", handler);
   }, [refresh]);
 
-  const liveRows = useMemo(() => normalizeInventoryRows(Array.isArray(inventory) ? inventory : null), [inventory]);
+  const liveRows = useMemo(
+    () => normalizeInventoryRows(Array.isArray(inventory) ? inventory : null, Array.isArray(products) ? products : null),
+    [inventory, products]
+  );
 
   const collectionOptions = useMemo(() => {
     const liveCollections = Array.isArray(collections) ? collections : [];

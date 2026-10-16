@@ -18,6 +18,13 @@ import {
   markRecordedPurchaseSignature,
   postCevonneRoute,
 } from "@/lib/cevonne/client";
+import {
+  FREE_SHIPPING_THRESHOLD,
+  STANDARD_SHIPPING_FEE,
+  calculateShippingFee,
+  getRemainingForFreeShipping,
+  isEligibleForFreeShipping,
+} from "@/lib/shipping";
 
 type ShippingData = {
   fullName: string;
@@ -142,18 +149,22 @@ export default function CheckoutPage() {
     }
   }, [shippingData, shippingStorageKey]);
 
-  const currencySymbol = cartItems[0]?.currency || "₹";
+  const currencySymbol = cartItems[0]?.currency === "INR" || !cartItems[0]?.currency ? "₹" : cartItems[0].currency;
   const purchaseCurrency = cartItems[0]?.currency && cartItems[0].currency.length === 3 ? cartItems[0].currency.toUpperCase() : "INR";
   const subtotal = useMemo(
     () =>
       cartItems.reduce((sum, item) => {
-        const value = Number(item.price);
-        return sum + (Number.isFinite(value) ? value : 0);
+        const rawPrice = Number(item.price);
+        const value = Number.isFinite(rawPrice) && rawPrice > 0 ? rawPrice : 899;
+        const qty = Math.max(1, Number(item.quantity) || 1);
+        return sum + value * qty;
       }, 0),
     [cartItems]
   );
-  const shippingFee = cartItems.length ? 149 : 0;
+  const isFreeShipping = isEligibleForFreeShipping(subtotal);
+  const shippingFee = calculateShippingFee(subtotal, cartItems.length);
   const total = subtotal + shippingFee;
+  const remainingForFreeShipping = getRemainingForFreeShipping(subtotal);
 
   const handleFieldChange = (event) => {
     const { name, value } = event.target;
@@ -185,9 +196,17 @@ export default function CheckoutPage() {
         totals: { subtotal, shippingFee, total },
         shipping: shippingData,
         items: cartItems.map((item) => ({
-          id: item.productId || item.id || item.key,
+          id: item.key || item.id || (item as any).productId,
+          productId: (item as any).productId || item.id || item.key,
+          productImage: (item as any).productImage || item.image || item.thumb || null,
           sku: item.sku || item.key,
           name: item.productName || item.name,
+          shade: item.shadeName || (item as any).shade || null,
+          shadeName: item.shadeName || (item as any).shade || null,
+          shadeImage: (item as any).shadeImage || null,
+          color: item.color || null,
+          image: (item as any).productImage || item.image || item.thumb || null,
+          thumb: (item as any).productImage || item.thumb || item.image || null,
           price: Number(item.price) || 0,
           currency: item.currency || currencySymbol,
           quantity: item.quantity || 1,
@@ -304,12 +323,21 @@ export default function CheckoutPage() {
             <ul className="space-y-2 border-b border-[var(--border)] pb-3 text-sm">
               {cartItems.length ? (
                 cartItems.map((item) => {
+                  const qty = Math.max(1, Number(item.quantity) || 1);
                   const itemPrice = Number(item.price);
-                  const priceLabel = Number.isFinite(itemPrice) ? formatMoney(itemPrice) : "0";
+                  const lineTotal = Number.isFinite(itemPrice) ? itemPrice * qty : 0;
+                  const priceLabel = formatMoney(lineTotal);
                   return (
                     <li key={item.key} className="flex items-center justify-between">
-                      <span className="text-[var(--muted-foreground)]">{item.name}</span>
-                      <span className="text-[var(--primary)]">
+                      <div className="flex flex-col">
+                        <span className="text-[var(--muted-foreground)]">{item.name}</span>
+                        {qty > 1 && (
+                          <span className="text-[11px] text-[var(--muted-foreground)]">
+                            Qty: {qty} × {item.currency || currencySymbol}{formatMoney(itemPrice)}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[var(--primary)] font-medium">
                         {item.currency || currencySymbol}
                         {priceLabel}
                       </span>
@@ -428,12 +456,21 @@ export default function CheckoutPage() {
             <ul className="space-y-3 border-b border-[var(--border)] pb-4">
               {cartItems.length ? (
                 cartItems.map((item) => {
+                  const qty = Math.max(1, Number(item.quantity) || 1);
                   const itemPrice = Number(item.price);
-                  const priceLabel = Number.isFinite(itemPrice) ? formatMoney(itemPrice) : "0";
+                  const lineTotal = Number.isFinite(itemPrice) ? itemPrice * qty : 0;
+                  const priceLabel = formatMoney(lineTotal);
                   return (
                     <li key={item.key} className="flex items-center justify-between text-sm">
-                      <span className="font-medium text-[var(--muted-foreground)]">{item.name}</span>
-                      <span className="text-[var(--primary)]">
+                      <div className="flex flex-col">
+                        <span className="font-medium text-[var(--muted-foreground)]">{item.name}</span>
+                        {qty > 1 && (
+                          <span className="text-[11px] text-[var(--muted-foreground)]">
+                            Qty: {qty} × {item.currency || currencySymbol}{formatMoney(itemPrice)}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[var(--primary)] font-medium">
                         {item.currency || currencySymbol}
                         {priceLabel}
                       </span>
@@ -445,7 +482,7 @@ export default function CheckoutPage() {
               )}
             </ul>
 
-            <div className="space-y-2 text-sm text-[var(--muted-foreground)]">
+            <div className="space-y-2.5 text-sm text-[var(--muted-foreground)]">
               <div className="flex items-center justify-between">
                 <span>Subtotal</span>
                 <span>
@@ -455,11 +492,35 @@ export default function CheckoutPage() {
               </div>
               <div className="flex items-center justify-between">
                 <span>Shipping</span>
-                <span>
-                  {currencySymbol}
-                  {formatMoney(shippingFee)}
-                </span>
+                {isFreeShipping ? (
+                  <div className="flex items-center gap-2">
+                    <span className="line-through text-xs text-[var(--muted-foreground)]">
+                      {currencySymbol}{STANDARD_SHIPPING_FEE}
+                    </span>
+                    <span className="font-semibold text-emerald-600 text-xs uppercase tracking-wider bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                      FREE
+                    </span>
+                  </div>
+                ) : (
+                  <span>
+                    {currencySymbol}
+                    {formatMoney(shippingFee)}
+                  </span>
+                )}
               </div>
+
+              {isFreeShipping ? (
+                <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-2.5 text-xs text-emerald-800 flex items-center gap-2">
+                  <span className="text-base">🎉</span>
+                  <span><strong>Free Shipping</strong> applied on orders above {currencySymbol}{FREE_SHIPPING_THRESHOLD}!</span>
+                </div>
+              ) : cartItems.length > 0 ? (
+                <div className="rounded-xl bg-amber-50/80 border border-amber-200/80 p-2.5 text-xs text-amber-900 flex items-center justify-between gap-2">
+                  <span>Add <strong>{currencySymbol}{remainingForFreeShipping}</strong> more for <strong>FREE Shipping</strong></span>
+                  <Link to="/search" className="underline font-medium text-amber-950 hover:text-black">Add items</Link>
+                </div>
+              ) : null}
+
               <div className="border-t border-[var(--border)] pt-4 flex items-center justify-between text-base font-bold text-[var(--primary)]">
                 <span>Total</span>
                 <span>
@@ -471,17 +532,40 @@ export default function CheckoutPage() {
 
             <div className="space-y-3 pt-2">
               {orderId ? (
-                <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-center text-sm text-emerald-800">
-                  Order <strong>{orderId}</strong> saved. View it in the dashboard orders panel.
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50/90 p-5 text-center text-sm text-emerald-900 shadow-sm space-y-3 animate-in fade-in duration-300">
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 text-xl font-bold">
+                    ✓
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-base text-emerald-950">Order Placed Successfully!</h3>
+                    <p className="text-xs text-emerald-700 mt-0.5">
+                      Order ID: <span className="font-mono font-bold tracking-wider">{orderId}</span>
+                    </p>
+                  </div>
+                  <div className="pt-2 flex flex-col gap-2">
+                    <Link
+                      to={`/track?order=${orderId}`}
+                      className="inline-flex w-full items-center justify-center rounded-full bg-[var(--primary)] px-4 py-3 text-xs font-bold uppercase tracking-wider text-white shadow-md hover:bg-[var(--primary-700)] transition-all"
+                    >
+                      Track Order Live
+                    </Link>
+                    <Link
+                      to="/profile/orders"
+                      className="inline-flex w-full items-center justify-center rounded-full border border-[var(--border)] bg-white px-4 py-2.5 text-xs font-semibold text-[var(--primary)] hover:bg-[var(--accent)] transition-all"
+                    >
+                      View in My Orders
+                    </Link>
+                  </div>
                 </div>
-              ) : null}
-              <Button
-                type="submit"
-                disabled={placing}
-                className="w-full rounded-full bg-[var(--primary)] py-6 text-sm font-bold uppercase tracking-widest text-[var(--primary-foreground)] shadow-lg shadow-[var(--primary)]/20 hover:bg-[var(--primary-700)] hover:shadow-xl transition-all disabled:opacity-70"
-              >
-                {placing ? "Saving..." : "Place Order"}
-              </Button>
+              ) : (
+                <Button
+                  type="submit"
+                  disabled={placing}
+                  className="w-full rounded-full bg-[var(--primary)] py-6 text-sm font-bold uppercase tracking-widest text-[var(--primary-foreground)] shadow-lg shadow-[var(--primary)]/20 hover:bg-[var(--primary-700)] hover:shadow-xl transition-all disabled:opacity-70"
+                >
+                  {placing ? "Processing Order..." : "Place Order"}
+                </Button>
+              )}
               <Link
                 to="/cart"
                 className="block text-center text-xs font-medium uppercase tracking-widest text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:underline"

@@ -4,9 +4,12 @@ import { useEffect, useState } from "react";
 import { Link } from "@/lib/router";
 import { API_BASE } from "@/lib/api";
 import { STATIC_ASSETS } from "@/lib/assets";
+import { fallbackCollections } from "@/data/cevonneCollections";
 import type { ProductCollection } from "@/types/product";
 
 const MAX_VISIBLE_COLLECTIONS = 8;
+
+let collectionsCache: ProductCollection[] | null = null;
 
 const normalizeCollections = (payload: unknown): ProductCollection[] => {
   const items = Array.isArray(payload)
@@ -24,8 +27,10 @@ const getCollectionImage = (collection: ProductCollection) => {
 };
 
 const CollectionSection = () => {
-  const [collections, setCollections] = useState<ProductCollection[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [collections, setCollections] = useState<ProductCollection[]>(
+    () => collectionsCache || fallbackCollections
+  );
+  const [loading, setLoading] = useState(!collectionsCache && !fallbackCollections.length);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -37,10 +42,13 @@ const CollectionSection = () => {
         return normalizeCollections(await response.json());
       })
       .then((items) => {
-        if (!cancelled) setCollections(items);
+        if (!cancelled && items.length > 0) {
+          collectionsCache = items;
+          setCollections(items);
+        }
       })
       .catch((requestError: unknown) => {
-        if (!cancelled) {
+        if (!cancelled && !collectionsCache && !fallbackCollections.length) {
           setError(requestError instanceof Error ? requestError.message : "Unable to load collections");
         }
       })
@@ -75,8 +83,8 @@ const CollectionSection = () => {
               return (
                 <Link
                   key={collection.id}
-                  to={`/search?collection=${encodeURIComponent(collectionKey)}`}
-                  className="block text-center"
+                  to={`/collections/${encodeURIComponent(collectionKey)}`}
+                  className="block text-center group"
                 >
                   <div className="aspect-[3/4] overflow-hidden bg-[#f3f2ef]">
                     <img

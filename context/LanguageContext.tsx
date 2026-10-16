@@ -6,6 +6,7 @@ import React, {
   useState,
   useEffect,
   useCallback,
+  useRef,
   type ReactNode,
 } from "react";
 import { translations, SUPPORTED_LANGUAGES } from "@/data/translations";
@@ -26,20 +27,31 @@ const DEFAULT_LANGUAGE = "en";
 const LanguageContext = createContext<LanguageContextValue | undefined>(undefined);
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguageState] = useState<string>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved && saved in translations) {
-        return saved;
-      }
-    }
-    return DEFAULT_LANGUAGE;
-  });
+  const [language, setLanguageState] = useState<string>(DEFAULT_LANGUAGE);
+  const isInitialized = useRef(false);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    localStorage.setItem(STORAGE_KEY, language);
-    document.documentElement.lang = language;
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved && saved in translations) {
+        setLanguageState(saved);
+      }
+    } catch {
+      // ignore
+    }
+    isInitialized.current = true;
+  }, []);
+
+  useEffect(() => {
+    if (!isInitialized.current) return;
+    try {
+      localStorage.setItem(STORAGE_KEY, language);
+    } catch {
+      // ignore
+    }
+    if (typeof document !== "undefined") {
+      document.documentElement.lang = language;
+    }
   }, [language]);
 
   const setLanguage = useCallback((newLang: string) => {

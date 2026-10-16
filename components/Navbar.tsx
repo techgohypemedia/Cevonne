@@ -13,14 +13,19 @@ const NAV_H_MOBILE = "h-16"     // 64px
 const NAV_H_DESKTOP = "md:h-20" // 80px
 
 const Navbar = () => {
+  const [mounted, setMounted] = useState(false)
   const THRESHOLD = 24
   const location = useLocation()
   const isProductPage = location.pathname.startsWith("/product")
   const [solid, setSolid] = useState(isProductPage)
   const ticking = useRef(false)
 
-  const { cartItems, wishlist, openDrawer } = useShop()
+  const { cartItems, wishlist, openDrawer, totalCount } = useShop()
   const { t } = useLanguage()
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
     const onScroll = () => {
@@ -76,8 +81,8 @@ const Navbar = () => {
                   <div className="flex-1 overflow-y-auto p-6">
                     <h3 className="mb-6 text-3xl font-serif font-bold tracking-wide text-[var(--foreground)]">{t("nav.menu")}</h3>
                     <nav className="space-y-6 text-base text-[var(--foreground)]">
-                      <Link className="block hover:underline hover:text-[var(--primary)]" to="/search">{t("nav.shopAll")}</Link>
-                      <Link className="block hover:underline hover:text-[var(--primary)]" to="/search">{t("nav.lips")}</Link>
+                      <Link className="block hover:underline hover:text-[var(--primary)]" to="/collections/everyday-essentials">{t("nav.shopAll")}</Link>
+                      <Link className="block hover:underline hover:text-[var(--primary)]" to="/collections/lip-color">{t("nav.lips")}</Link>
                       <Link className="block hover:underline hover:text-[var(--primary)]" to="/search">{t("nav.face")}</Link>
                       <Link className="block hover:underline hover:text-[var(--primary)]" to="/search">{t("nav.eyes")}</Link>
                       <Link className="block hover:underline hover:text-[var(--primary)]" to="/ar/lipstick">{t("nav.virtualTryOn")}</Link>
@@ -149,7 +154,7 @@ const Navbar = () => {
               aria-label="Wishlist"
             >
               <Heart className="h-5 w-5" strokeWidth={1.5} />
-              {wishlist.length > 0 && (
+              {mounted && wishlist.length > 0 && (
                 <span className="pointer-events-none absolute -top-1 -right-1 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-semibold uppercase leading-none text-white">
                   {wishlist.length}
                 </span>
@@ -162,9 +167,9 @@ const Navbar = () => {
               aria-label="Cart"
             >
               <ShoppingCart className="h-5 w-5" strokeWidth={1.5} />
-              {cartItems.length > 0 && (
+              {mounted && totalCount > 0 && (
                 <span className="pointer-events-none absolute -top-1 -right-1 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-emerald-500 px-1 text-[9px] font-semibold uppercase leading-none text-white">
-                  {cartItems.length}
+                  {totalCount}
                 </span>
               )}
             </button>

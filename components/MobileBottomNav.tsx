@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useEffect, useState } from "react"
 import { Link, useLocation } from "react-router-dom"
 import { Home, Search, ShoppingBag, User } from "lucide-react"
 import { useShop } from "@/context/ShopContext"
@@ -21,8 +21,13 @@ type NavItem =
     }
 
 const MobileBottomNav = () => {
-    const { cartItems } = useShop()
+    const [mounted, setMounted] = useState(false)
+    const { cartItems, totalCount } = useShop()
     const location = useLocation()
+
+    useEffect(() => {
+        setMounted(true)
+    }, [])
 
     const isActive = (path) => location.pathname === path
 
@@ -62,9 +67,9 @@ const MobileBottomNav = () => {
                             }`}
                     >
                         <Icon className={`h-6 w-6 ${isActiveItem ? "fill-current" : ""}`} strokeWidth={1.5} />
-                        {item.showBadge && cartItems.length > 0 && (
+                        {item.showBadge && mounted && totalCount > 0 && (
                             <span className="absolute right-1 top-1 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-black px-1 text-[10px] font-bold text-white">
-                                {cartItems.length}
+                                {totalCount}
                             </span>
                         )}
                     </Link>

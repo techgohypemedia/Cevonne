@@ -6,6 +6,8 @@ import { Link } from "@/lib/router";
 
 import { useProductsCatalog } from "@/hooks/useProductsCatalog";
 import { DEFAULT_PRODUCT_IMAGE, STATIC_ASSETS, resolveProductAsset } from "@/lib/assets";
+import { useShop } from "@/context/ShopContext";
+import { toast } from "sonner";
 
 const resolveAsset = (pth = "") => {
   if (!pth) return DEFAULT_PRODUCT_IMAGE;
@@ -26,18 +28,22 @@ const mapProductForCard = (product) => {
     product.images?.[0]?.url ||
     "";
 
+  const rawPrice = Number(product.pricing?.price ?? product.price ?? product.basePrice);
+  const priceValue = Number.isFinite(rawPrice) && rawPrice > 0 ? rawPrice : 899;
+
   return {
     ...product,
     cardHero: resolveAsset(hero),
     marketingBadge: product.badges?.find((b) => b.type === "marketing")?.label,
-    priceValue: product.pricing?.price ?? product.price ?? product.basePrice ?? 0,
-    currency: product.pricing?.currency ?? product.currency ?? "₹",
+    priceValue,
+    currency: product.pricing?.currency === "INR" || !product.pricing?.currency ? "₹" : (product.currency || "₹"),
   };
 };
 
 const ProductCard = () => {
   const [expanded, setExpanded] = useState(false);
   const { products: list, loading } = useProductsCatalog();
+  const { wishlist, toggleWishlist, openDrawer } = useShop();
 
   const mapped = useMemo(
     () => (Array.isArray(list) ? list.map(mapProductForCard).filter(Boolean) : []),
@@ -59,44 +65,69 @@ const ProductCard = () => {
 
       {/* Product grid */}
       <div className="flex w-full snap-x snap-mandatory gap-0 overflow-x-auto pb-4 sm:grid sm:grid-cols-2 sm:pb-0 lg:grid-cols-4 no-scrollbar">
-        {visible.map((product, i) => (
-          <div
-            key={product.id || product.slug || i}
-            className="relative flex min-w-[85vw] flex-col justify-between overflow-hidden bg-white text-center min-h-[420px] snap-center sm:min-w-0"
-          >
-            {/* Background behind everything */}
-            <img
-              src={STATIC_ASSETS.cardBackground}
-              alt=""
-              aria-hidden="true"
-              className="absolute inset-0 h-full w-full object-cover"
-            />
+        {visible.map((product, i) => {
+          const productKey = product.slug || product.id || `home-prod-${i}`;
+          const isWishlisted = wishlist.some((w) => w.key === productKey || w.id === product.id || w.slug === product.slug);
 
-            {/* Card content (wrapped with Link to details) */}
-            <Link
-              to={`/product/${product.slug || product.id || ""}`}
-              className="relative z-10 flex h-full flex-col"
+          const handleToggleWishlist = (e: React.MouseEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const status = toggleWishlist({
+              key: productKey,
+              id: product.id || productKey,
+              slug: product.slug || product.id,
+              name: product.name,
+              productName: product.name,
+              price: product.priceValue || 899,
+              currency: product.currency || "₹",
+              image: product.cardHero,
+              thumb: product.cardHero,
+            });
+            if (status === "added") {
+              toast.success(`${product.name} saved to wishlist`);
+              openDrawer("wishlist");
+            } else if (status === "removed") {
+              toast(`${product.name} removed from wishlist`);
+            }
+          };
+
+          return (
+            <div
+              key={product.id || product.slug || i}
+              className="relative flex min-w-[85vw] flex-col justify-between overflow-hidden bg-white text-center min-h-[420px] snap-center sm:min-w-0"
             >
-              {/* Top row */}
-              <div className="absolute left-2 top-2 flex items-center gap-2 text-xs font-medium text-black">
-                <span className="flex items-center gap-1 px-2 py-1 text-[11px] rounded-full">
-                  <Video className="h-4 w-4" />
-                  Virtual Try On
-                </span>
-              </div>
+              {/* Background behind everything */}
+              <img
+                src={STATIC_ASSETS.cardBackground}
+                alt=""
+                aria-hidden="true"
+                className="absolute inset-0 h-full w-full object-cover"
+              />
 
-              {/* Wishlist (kept as a separate button, not inside Link for a11y) */}
-              <button
-                type="button"
-                aria-label="Add to wishlist"
-                className="absolute right-2 top-2 z-20 p-1 rounded-full"
-                onClick={(e) => {
-                  e.preventDefault();
-                  // TODO: handle wishlist here
-                }}
+              {/* Card content (wrapped with Link to details) */}
+              <Link
+                to={`/product/${product.slug || product.id || ""}`}
+                className="relative z-10 flex h-full flex-col"
               >
-                <Heart className="h-4 w-4" />
-              </button>
+                {/* Top row */}
+                <div className="absolute left-2 top-2 flex items-center gap-2 text-xs font-medium text-black">
+                  <span className="flex items-center gap-1 px-2 py-1 text-[11px] rounded-full">
+                    <Video className="h-4 w-4" />
+                    Virtual Try On
+                  </span>
+                </div>
+
+                {/* Wishlist */}
+                <button
+                  type="button"
+                  aria-label="Add to wishlist"
+                  className={`absolute right-2 top-2 z-20 p-1.5 rounded-full bg-white/70 hover:bg-white backdrop-blur transition-all shadow-sm cursor-pointer ${
+                    isWishlisted ? "text-rose-500" : "text-neutral-700 hover:text-rose-500"
+                  }`}
+                  onClick={handleToggleWishlist}
+                >
+                  <Heart className={`h-4 w-4 ${isWishlisted ? "fill-rose-500 text-rose-500" : ""}`} />
+                </button>
 
               {/* Image area */}
               <div className="relative flex flex-1 items-center justify-center px-4 pt-12 pb-2">
@@ -156,7 +187,8 @@ const ProductCard = () => {
               </div>
             </Link>
           </div>
-        ))}
+        );
+      })}
         {!visible.length && !loading && (
           <div className="col-span-full py-12 text-center text-sm text-neutral-500">
             No products available yet.

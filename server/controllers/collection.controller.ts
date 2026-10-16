@@ -146,19 +146,31 @@ exports.listCollections = async (_req, res, next) => {
 exports.getCollection = async (req, res, next) => {
   try {
     const prisma = await getPrisma();
-    const collection = await prisma.collection.findUnique({
-      where: { id: req.params.id },
+    const target = req.params.id;
+    const collection = await prisma.collection.findFirst({
+      where: {
+        OR: [
+          { id: target },
+          { slug: target },
+        ],
+      },
       include: {
         ...collectionInclude,
         products: {
-          select: { id: true, name: true, slug: true, basePrice: true },
+          include: {
+            images: true,
+            shades: true,
+          },
+          orderBy: { createdAt: "desc" },
         },
       },
     });
     if (!collection) {
       return res.status(404).json({ message: "Collection not found" });
     }
-    return res.status(200).json(normalizeCollection(collection));
+
+    const normalized: any = normalizeCollection(collection);
+    return res.status(200).json(normalized);
   } catch (error) {
     return next(error);
   }

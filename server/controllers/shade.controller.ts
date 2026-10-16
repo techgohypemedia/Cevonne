@@ -13,6 +13,7 @@ const shadeSchema = z.object({
     .regex(/^#?[0-9a-fA-F]{6}$/, 'Hex must be a 6 character hex code')
     .transform((value) => (value.startsWith('#') ? value : `#${value}`)),
   sku: z.string().optional(),
+  imageUrl: z.string().trim().optional().nullable(),
   arAssetUrl: z.string().trim().optional().nullable(),
   arPreviewUrl: z.string().trim().optional().nullable(),
   arCode: z.string().trim().optional().nullable(),
@@ -27,8 +28,12 @@ const toDecimalString = (value) =>
 
 const normalizeShadeResponse = (shade) => {
   if (!shade) return shade;
+  const shadeQuantity = shade.inventory?.quantity ?? 0;
   return {
     ...shade,
+    quantity: shadeQuantity,
+    isOutOfStock: shadeQuantity <= 0,
+    imageUrl: normalizeUploadedAssetUrl(shade.imageUrl) ?? shade.imageUrl,
     arAssetUrl: normalizeUploadedAssetUrl(shade.arAssetUrl) ?? shade.arAssetUrl,
     arPreviewUrl: normalizeUploadedAssetUrl(shade.arPreviewUrl) ?? shade.arPreviewUrl,
   };
@@ -81,6 +86,7 @@ exports.createShade = async (req, res, next) => {
       name: payload.name,
       hexColor: normalizeHex(payload.hexColor),
       sku: payload.sku ?? null,
+      imageUrl: payload.imageUrl ?? null,
       arAssetUrl: payload.arAssetUrl ?? null,
       arPreviewUrl: payload.arPreviewUrl ?? null,
       arCode: payload.arCode ?? null,
@@ -138,6 +144,10 @@ exports.updateShade = async (req, res, next) => {
             ? normalizeHex(payload.hexColor)
             : undefined,
         sku: payload.sku ?? undefined,
+        imageUrl:
+          payload.imageUrl !== undefined
+            ? payload.imageUrl || null
+            : undefined,
         arAssetUrl:
           payload.arAssetUrl !== undefined
             ? payload.arAssetUrl || null

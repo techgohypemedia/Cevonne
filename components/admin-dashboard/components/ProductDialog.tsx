@@ -297,9 +297,18 @@ function ProductFormBase({
   // Map product to form values (used on edit)
   const mapProductToForm = (prod) => {
     const experience = prod?.experience ?? {};
+    const extractLineText = (item: any) => {
+      if (!item) return "";
+      if (typeof item === "string") return item === "[object Object]" ? "" : item.trim();
+      if (typeof item === "object") {
+        const val = item.label ?? item.name ?? item.title ?? item.text ?? "";
+        return typeof val === "string" && val !== "[object Object]" ? val.trim() : "";
+      }
+      return String(item).trim();
+    };
     const joinLines = (value) => {
-      if (Array.isArray(value)) return value.join("\n");
-      if (typeof value === "string") return value;
+      if (Array.isArray(value)) return value.map(extractLineText).filter(Boolean).join("\n");
+      if (typeof value === "string") return value === "[object Object]" ? "" : value;
       return "";
     };
     const galleryFromImages = Array.isArray(prod?.images)
@@ -340,7 +349,7 @@ function ProductFormBase({
       experienceHeroImage: prod?.media?.heroImage ?? experience.hero?.image ?? prod?.images?.[0]?.url ?? "",
       experienceHeroObjectPosition: experience.hero?.objectPosition ?? "",
       experienceGallery: joinLines(prod?.media?.gallery?.map(g => g.id || g.url) ?? experience.gallery ?? galleryFromImages),
-      experienceBadges: joinLines(prod?.badges?.map(b => b.label) ?? experience.badges),
+      experienceBadges: joinLines(prod?.badges ?? experience.badges),
       experienceBenefits: joinLines(experience.benefits),
       experienceHowToUse: joinLines(experience.howToUse ?? experience.how_to_use),
       experienceClaims: joinLines(experience.claims),
@@ -378,6 +387,7 @@ function ProductFormBase({
           name: shade.name ?? "",
           hexColor: shade.hexColor ?? "#a855f7",
           sku: shade.sku ?? "",
+          imageUrl: (shade as any).imageUrl ?? (shade as any).image ?? (shade as any).thumb ?? "",
           price:
             typeof shade.price === "string" || typeof shade.price === "number"
               ? String(shade.price)
@@ -403,6 +413,7 @@ function ProductFormBase({
           name: shade.name ?? "",
           hexColor: shade.hexColor ?? "#a855f7",
           sku: shade.sku ?? "",
+          imageUrl: (shade as any).imageUrl ?? (shade as any).image ?? (shade as any).thumb ?? "",
           price:
             typeof shade.price === "string" || typeof shade.price === "number"
               ? String(shade.price)
@@ -557,6 +568,7 @@ function ProductFormBase({
           hexColor: shade.hexColor?.trim() ?? "",
           sku: asOptionalString(shade.sku),
           price: asOptionalNumber(shade.price),
+          imageUrl: asOptionalString(shade.imageUrl),
           quantity:
             shade.quantity !== undefined && shade.quantity !== ""
               ? Math.max(0, parseInt(shade.quantity, 10) || 0)

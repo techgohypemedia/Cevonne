@@ -5,6 +5,8 @@ export const ORDER_STATUSES = [
   "SHIPPED",
   "OUT_FOR_DELIVERY",
   "DELIVERED",
+  "CANCELLED",
+  "REJECTED",
 ] as const;
 
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
@@ -40,15 +42,26 @@ export interface OrderShipping {
   address: string;
   city?: string;
   postalCode?: string;
+  carrier?: string | null;
+  trackingNumber?: string | null;
 }
 
 export interface OrderItem {
   id?: string;
+  productId?: string;
+  productImage?: string | null;
   sku?: string;
   name: string;
   price: number;
   currency?: string;
   quantity: number;
+  shade?: string | null;
+  shadeName?: string | null;
+  shadeImage?: string | null;
+  color?: string | null;
+  image?: string | null;
+  thumb?: string | null;
+  [key: string]: unknown;
 }
 
 export interface Order {
@@ -59,6 +72,8 @@ export interface Order {
   paymentMethod?: string | null;
   totals: OrderTotals;
   shipping: OrderShipping;
+  carrier?: string | null;
+  trackingNumber?: string | null;
   items: OrderItem[];
   createdAt: Date | string;
   updatedAt: Date | string;

@@ -2972,13 +2972,14 @@ export default function VirtualTryOn() {
     if (!shadeKey) return;
 
     const added = addToCart({
-
       key: shadeKey,
-
-      name: activeShadeLabel,
-
+      name: `Cevonne - ${activeShadeLabel}`,
+      productName: "Cevonne Lipstick",
+      shadeName: activeShadeLabel,
       color: activeShade.color,
-
+      price: 899,
+      currency: "₹",
+      quantity: 1,
     });
 
     if (added) {

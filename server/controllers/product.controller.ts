@@ -49,6 +49,7 @@ const shadeSchema = z.object({
   arAssetUrl: z.string().trim().optional().nullable(),
   arPreviewUrl: z.string().trim().optional().nullable(),
   arCode: z.string().trim().optional().nullable(),
+  imageUrl: z.string().trim().optional().nullable(),
   price: z.number().min(0).optional(),
   quantity: z.number().int().min(0).optional(),
 });
@@ -206,8 +207,8 @@ const collectGalleryUrls = (raw: Record<string, any> = {}) => {
 };
 
 const normalizeImagesInput = (raw: Record<string, any> = {}) => {
-  if (Array.isArray(raw.images) && raw.images.length) {
-    return raw.images
+  if (Array.isArray(raw.images)) {
+    const list = raw.images
       .map((image) => {
         if (!image) return null;
         if (typeof image === 'string') return { url: image };
@@ -216,7 +217,19 @@ const normalizeImagesInput = (raw: Record<string, any> = {}) => {
           alt: image.alt,
         };
       })
-      .filter((img) => img?.url);
+      .filter((img): img is { url: string; alt?: string } => Boolean(img?.url));
+
+    const seen = new Set<string>();
+    const deduped: typeof list = [];
+    for (const item of list) {
+      const cleanUrl = String(item.url || '').trim();
+      const norm = cleanUrl.replace(/^https?:\/\/[^/]+/, '');
+      if (!cleanUrl || seen.has(cleanUrl) || (norm && seen.has(norm))) continue;
+      seen.add(cleanUrl);
+      if (norm) seen.add(norm);
+      deduped.push({ ...item, url: cleanUrl });
+    }
+    return deduped;
   }
 
   const gallery = collectGalleryUrls(raw);
@@ -232,6 +245,7 @@ const normalizeShadesInput = (shades: any[] | undefined) => {
     arAssetUrl: shade?.arAssetUrl ?? shade?.arAsset ?? shade?.assetUrl ?? null,
     arPreviewUrl: shade?.arPreviewUrl ?? shade?.previewUrl ?? null,
     arCode: shade?.arCode ?? shade?.code ?? null,
+    imageUrl: shade?.imageUrl ?? shade?.image ?? shade?.thumb ?? shade?.url ?? null,
     price: toNumber(shade?.price ?? shade?.basePrice ?? shade?.mrp),
     quantity: shade?.quantity ?? shade?.qty ?? shade?.stock,
   }));
@@ -439,6 +453,7 @@ const buildProductData = (payload) => ({
           arAssetUrl: shade.arAssetUrl ?? null,
           arPreviewUrl: shade.arPreviewUrl ?? null,
           arCode: shade.arCode ?? null,
+          imageUrl: shade.imageUrl ?? null,
           price: toDecimalString(shade.price),
           inventory: {
             create: {
@@ -504,11 +519,20 @@ const toProductResponse = (product) => {
     : product.images;
 
   const shades = Array.isArray(product.shades)
-    ? product.shades.map((shade) => ({
-        ...shade,
-        arAssetUrl: normalizeUploadedAssetUrl(shade.arAssetUrl) ?? shade.arAssetUrl,
-        arPreviewUrl: normalizeUploadedAssetUrl(shade.arPreviewUrl) ?? shade.arPreviewUrl,
-      }))
+    ? product.shades.map((shade) => {
+        const resolvedImage = normalizeUploadedAssetUrl(shade.imageUrl) ?? shade.imageUrl;
+        const shadeQuantity = shade.inventory?.quantity ?? 0;
+        return {
+          ...shade,
+          imageUrl: resolvedImage,
+          image: resolvedImage,
+          thumb: resolvedImage,
+          quantity: shadeQuantity,
+          isOutOfStock: shadeQuantity <= 0,
+          arAssetUrl: normalizeUploadedAssetUrl(shade.arAssetUrl) ?? shade.arAssetUrl,
+          arPreviewUrl: normalizeUploadedAssetUrl(shade.arPreviewUrl) ?? shade.arPreviewUrl,
+        };
+      })
     : product.shades;
 
   const media =
@@ -543,8 +567,15 @@ const toProductResponse = (product) => {
         }
       : product.experience;
 
+  const basePriceNum = product.basePrice ? Number(product.basePrice) : 899;
+  const pricingPrice = product.pricing && typeof product.pricing === "object" && (product.pricing as any).price != null
+    ? Number((product.pricing as any).price)
+    : undefined;
+  const resolvedPrice = (pricingPrice && pricingPrice > 0 ? pricingPrice : (basePriceNum > 0 ? basePriceNum : 899));
+
   return {
     ...product,
+    price: resolvedPrice,
     images,
     shades,
     media,
@@ -614,9 +645,15 @@ exports.createProduct = async (req, res, next) => {
       });
     }
     if (error.code === 'P2002') {
-      return res
-        .status(409)
-        .json({ message: 'Product slug already exists' });
+      const target = Array.isArray(error.meta?.target)
+        ? error.meta.target.join(', ')
+        : String(error.meta?.target || 'slug');
+      return res.status(409).json({
+        message: target.includes('slug')
+          ? 'A product with this URL handle (slug) already exists. Please change the product name or edit the URL handle.'
+          : `A record with this ${target} already exists.`,
+        target,
+      });
     }
     return next(error);
   }
@@ -653,7 +690,7 @@ exports.updateProduct = async (req, res, next) => {
           : payload.collectionId === null
           ? { disconnect: true }
           : undefined,
-        images: payload.images
+        images: payload.images !== undefined
           ? {
               deleteMany: {},
               create: payload.images.map((image) => ({
@@ -684,6 +721,7 @@ exports.updateProduct = async (req, res, next) => {
                 arAssetUrl: shade.arAssetUrl ?? null,
                 arPreviewUrl: shade.arPreviewUrl ?? null,
                 arCode: shade.arCode ?? null,
+                imageUrl: shade.imageUrl ?? null,
                 price: toDecimalString(shade.price),
                 productId: product.id,
                 inventory: {

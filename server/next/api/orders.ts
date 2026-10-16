@@ -32,6 +32,25 @@ export const dispatchOrdersRoute = async (request: Request, segments: string[] =
     return runController(request, orderController.getMyOrders, { user: auth });
   }
 
+  if (first === "track" && request.method === "GET") {
+    const url = new URL(request.url);
+    const orderNumber = url.searchParams.get("number") || url.searchParams.get("id");
+    if (!orderNumber) {
+      return jsonResponse({ message: "Order number is required" }, 400);
+    }
+    return runController(request, orderController.getOrder, {
+      params: { id: orderNumber.trim() },
+    });
+  }
+
+  if (request.method === "GET") {
+    const auth = await getAuthUser(request);
+    return runController(request, orderController.getOrder, {
+      user: auth || undefined,
+      params: { id: first },
+    });
+  }
+
   if (request.method === "PATCH") {
     const auth = await getAuthUser(request);
     if (!auth) return unauthorizedResponse();
