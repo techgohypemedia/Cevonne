@@ -5,6 +5,7 @@ import { Link } from "react-router-dom"
 import { Minus, Plus, Trash2, ArrowRight, ShoppingBag } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useShop } from "@/context/ShopContext"
+import { toast } from "sonner"
 import {
   FREE_SHIPPING_THRESHOLD,
   STANDARD_SHIPPING_FEE,
@@ -114,33 +115,59 @@ export default function CartPage() {
 
                         <div className="flex items-center justify-between pt-2 border-t border-[var(--border)]/60">
                           {/* Stepper */}
-                          <div className="flex items-center border border-[var(--border)] rounded-lg overflow-hidden bg-neutral-50 dark:bg-neutral-900">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (qty <= 1) {
-                                  removeFromCart(item.key)
-                                } else {
-                                  updateQuantity(item.key, qty - 1)
-                                }
-                              }}
-                              className="px-2.5 py-1.5 text-neutral-600 hover:text-black hover:bg-neutral-200 transition"
-                              aria-label="Decrease quantity"
-                            >
-                              <Minus className="h-3.5 w-3.5" />
-                            </button>
-                            <span className="px-3 text-xs font-semibold text-[var(--primary)] min-w-[28px] text-center">
-                              {qty}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => updateQuantity(item.key, qty + 1)}
-                              className="px-2.5 py-1.5 text-neutral-600 hover:text-black hover:bg-neutral-200 transition"
-                              aria-label="Increase quantity"
-                            >
-                              <Plus className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
+                          {(() => {
+                            const maxStock = typeof item.stock === "number" ? item.stock : (typeof item.maxQuantity === "number" ? item.maxQuantity : null);
+                            const isMaxStock = maxStock !== null && maxStock !== undefined && qty >= maxStock;
+
+                            return (
+                              <div className="flex flex-col gap-1">
+                                <div className="flex items-center border border-[var(--border)] rounded-lg overflow-hidden bg-neutral-50 dark:bg-neutral-900">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (qty <= 1) {
+                                        removeFromCart(item.key)
+                                      } else {
+                                        updateQuantity(item.key, qty - 1)
+                                      }
+                                    }}
+                                    className="px-2.5 py-1.5 text-neutral-600 hover:text-black hover:bg-neutral-200 transition"
+                                    aria-label="Decrease quantity"
+                                  >
+                                    <Minus className="h-3.5 w-3.5" />
+                                  </button>
+                                  <span className="px-3 text-xs font-semibold text-[var(--primary)] min-w-[28px] text-center">
+                                    {qty}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (isMaxStock) {
+                                        toast.error(`Only ${maxStock} unit${maxStock === 1 ? "" : "s"} available in stock.`);
+                                        return;
+                                      }
+                                      updateQuantity(item.key, qty + 1);
+                                    }}
+                                    disabled={isMaxStock}
+                                    className={`px-2.5 py-1.5 transition ${
+                                      isMaxStock
+                                        ? "text-neutral-300 cursor-not-allowed bg-neutral-100"
+                                        : "text-neutral-600 hover:text-black hover:bg-neutral-200"
+                                    }`}
+                                    aria-label="Increase quantity"
+                                    title={isMaxStock ? `Max ${maxStock} units in stock` : "Increase quantity"}
+                                  >
+                                    <Plus className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                                {isMaxStock && (
+                                  <span className="text-[11px] text-amber-700 font-medium">
+                                    Max stock reached ({maxStock})
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })()}
 
                           {/* Line total */}
                           <div className="text-right">

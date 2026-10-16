@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
 import { useShop } from "@/context/ShopContext"
+import { toast } from "sonner"
 import {
   FREE_SHIPPING_THRESHOLD,
   STANDARD_SHIPPING_FEE,
@@ -228,39 +229,65 @@ export default function ShopDrawer() {
                         </div>
 
                         {/* Controls & Line Total */}
-                        <div className="flex items-center justify-between pt-2">
-                          <div className="flex items-center border border-border rounded-lg bg-neutral-50 overflow-hidden">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (qty <= 1) {
-                                  removeFromCart(item.key)
-                                } else {
-                                  updateQuantity(item.key, qty - 1)
-                                }
-                              }}
-                              className="px-2 py-1 text-neutral-600 hover:text-black hover:bg-neutral-200 transition"
-                              aria-label="Decrease quantity"
-                            >
-                              <Minus className="h-3 w-3" />
-                            </button>
-                            <span className="px-2 text-xs font-semibold text-neutral-900 min-w-[20px] text-center">
-                              {qty}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => updateQuantity(item.key, qty + 1)}
-                              className="px-2 py-1 text-neutral-600 hover:text-black hover:bg-neutral-200 transition"
-                              aria-label="Increase quantity"
-                            >
-                              <Plus className="h-3 w-3" />
-                            </button>
-                          </div>
+                        {(() => {
+                          const maxStock = typeof item.stock === "number" ? item.stock : (typeof item.maxQuantity === "number" ? item.maxQuantity : null);
+                          const isMaxStock = maxStock !== null && maxStock !== undefined && qty >= maxStock;
 
-                          <span className="font-semibold text-sm text-neutral-900">
-                            {itemCurrency}{lineTotal.toLocaleString("en-IN")}
-                          </span>
-                        </div>
+                          return (
+                            <div className="flex items-center justify-between pt-2">
+                              <div className="flex flex-col gap-1">
+                                <div className="flex items-center border border-border rounded-lg bg-neutral-50 overflow-hidden">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (qty <= 1) {
+                                        removeFromCart(item.key)
+                                      } else {
+                                        updateQuantity(item.key, qty - 1)
+                                      }
+                                    }}
+                                    className="px-2 py-1 text-neutral-600 hover:text-black hover:bg-neutral-200 transition"
+                                    aria-label="Decrease quantity"
+                                  >
+                                    <Minus className="h-3 w-3" />
+                                  </button>
+                                  <span className="px-2 text-xs font-semibold text-neutral-900 min-w-[20px] text-center">
+                                    {qty}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (isMaxStock) {
+                                        toast.error(`Only ${maxStock} unit${maxStock === 1 ? "" : "s"} available in stock.`);
+                                        return;
+                                      }
+                                      updateQuantity(item.key, qty + 1);
+                                    }}
+                                    disabled={isMaxStock}
+                                    className={`px-2 py-1 transition ${
+                                      isMaxStock
+                                        ? "text-neutral-300 cursor-not-allowed bg-neutral-100"
+                                        : "text-neutral-600 hover:text-black hover:bg-neutral-200"
+                                    }`}
+                                    aria-label="Increase quantity"
+                                    title={isMaxStock ? `Max ${maxStock} units in stock` : "Increase quantity"}
+                                  >
+                                    <Plus className="h-3 w-3" />
+                                  </button>
+                                </div>
+                                {isMaxStock && (
+                                  <span className="text-[10px] text-amber-700 font-medium">
+                                    Max in stock ({maxStock})
+                                  </span>
+                                )}
+                              </div>
+
+                              <span className="font-semibold text-sm text-neutral-900">
+                                {itemCurrency}{lineTotal.toLocaleString("en-IN")}
+                              </span>
+                            </div>
+                          );
+                        })()}
                       </div>
                     </li>
                   )

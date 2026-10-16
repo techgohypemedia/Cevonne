@@ -269,20 +269,29 @@ export default function CollectionPage({ slug: propSlug }: CollectionPageProps) 
       return;
     }
 
-    addToCart({
+    const shadeQuantity = activeShade?.quantity !== undefined && activeShade?.quantity !== null ? Number(activeShade.quantity) : undefined;
+
+    const added = addToCart({
       key: `${product.slug || product.id}${activeShade?.sku ? `-${activeShade.sku}` : ""}`,
       id: product.id,
       slug: product.slug,
       name: product.name,
       productName: product.name,
       shade: activeShade?.name,
+      shadeName: activeShade?.name,
+      sku: activeShade?.sku,
+      shadeId: activeShade?.id,
+      stock: shadeQuantity,
+      maxQuantity: shadeQuantity,
       price: priceNum > 0 ? priceNum : 899,
       currency: "₹",
       image: resolveAsset(activeShade?.thumb || heroImg),
       quantity: 1,
     });
 
-    toast.success(`${product.name} added to bag!`);
+    if (added) {
+      toast.success(`${product.name} added to bag!`);
+    }
     openDrawer("cart");
   };
 

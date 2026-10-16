@@ -21,6 +21,7 @@ const orderItemSchema = z.object({
   productId: z.string().optional(),
   productImage: z.string().optional().nullable(),
   sku: z.string().optional(),
+  shadeId: z.string().optional().nullable(),
   name: z.string().min(1),
   shade: z.string().optional().nullable(),
   shadeName: z.string().optional().nullable(),
@@ -196,6 +197,69 @@ exports.createOrder = async (req, res, next) => {
   try {
     const payload = createOrderSchema.parse(req.body);
     const prisma = await getPrisma();
+
+    // Validate that ordered items do not exceed available inventory in database
+    for (const item of payload.items) {
+      const requestedQty = Math.max(1, Number(item.quantity) || 1);
+      let shade: any = null;
+
+      if (item.sku && String(item.sku).trim() && String(item.sku) !== "0") {
+        shade = await prisma.shade.findFirst({
+          where: { sku: String(item.sku).trim() },
+          include: { inventory: true },
+        });
+      }
+
+      if (!shade && item.shadeId) {
+        shade = await prisma.shade.findUnique({
+          where: { id: String(item.shadeId) },
+          include: { inventory: true },
+        });
+      }
+
+      if (!shade && item.id && !item.id.includes("_") && !item.id.includes("-")) {
+        shade = await prisma.shade.findUnique({
+          where: { id: String(item.id) },
+          include: { inventory: true },
+        });
+      }
+
+      const prodId = item.productId || (item.id && !item.id.includes("_") ? item.id : null);
+      const shadeName = item.shadeName || item.shade;
+
+      if (!shade && prodId && shadeName) {
+        shade = await prisma.shade.findFirst({
+          where: {
+            productId: String(prodId),
+            name: { equals: String(shadeName).trim(), mode: "insensitive" },
+          },
+          include: { inventory: true },
+        });
+      }
+
+      if (!shade && shadeName) {
+        shade = await prisma.shade.findFirst({
+          where: {
+            name: { equals: String(shadeName).trim(), mode: "insensitive" },
+          },
+          include: { inventory: true },
+        });
+      }
+
+      if (shade && shade.inventory) {
+        const availableStock = Number(shade.inventory.quantity) || 0;
+        if (availableStock <= 0) {
+          return res.status(400).json({
+            message: `"${item.name || shade.name || "Item"}" (${shade.name || "shade"}) is currently out of stock.`,
+          });
+        }
+        if (requestedQty > availableStock) {
+          return res.status(400).json({
+            message: `Insufficient stock for "${item.name || shade.name}". Only ${availableStock} unit${availableStock === 1 ? "" : "s"} available in stock, but ${requestedQty} were requested.`,
+          });
+        }
+      }
+    }
 
     const order = await prisma.order.create({
       data: {

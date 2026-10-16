@@ -1087,6 +1087,9 @@ export default function ProductDetails({ data }: { data?: any }) {
     id: itemKey,
     key: itemKey,
     sku: shadeDetails?.sku || shadeDetails?.id || itemKey,
+    shadeId: shadeDetails?.id,
+    stock: shadeQuantity,
+    maxQuantity: shadeQuantity,
     productId: p.id || p.slug || "product-default",
     productName: displayName,
     name: displayName,
@@ -1100,7 +1103,7 @@ export default function ProductDetails({ data }: { data?: any }) {
     price: priceValue,
     currency: currencySymbol,
     quantity: Math.max(1, qty),
-  }), [itemKey, p.id, p.slug, displayName, activeShadeLabel, shadeDetails, mainProductImg, shadeImg, priceValue, currencySymbol, qty]);
+  }), [itemKey, p.id, p.slug, displayName, activeShadeLabel, shadeDetails, mainProductImg, shadeImg, priceValue, currencySymbol, qty, shadeQuantity]);
 
   const handleAddToCart = () => {
     if (!currentItem) return;

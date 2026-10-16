@@ -2,17 +2,26 @@
 
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
+import { toast } from "sonner";
+
 export interface CartItem {
   key: string;
   id?: string;
   slug?: string;
   name?: string;
+  productName?: string;
   price?: number | string | null;
   currency?: string;
   image?: string | null;
   thumb?: string | null;
   color?: string | null;
+  shade?: string | null;
   shadeName?: string | null;
+  sku?: string | null;
+  shadeId?: string | null;
+  productId?: string | null;
+  stock?: number | null;
+  maxQuantity?: number | null;
   quantity?: number | null;
   [key: string]: unknown;
 }
@@ -42,10 +51,18 @@ const sanitizeCartItem = (item: CartItem): CartItem => {
   const priceNum = Number(item.price);
   const validPrice = Number.isFinite(priceNum) && priceNum > 0 ? priceNum : 899;
   const currency = item.currency === "INR" || !item.currency ? "₹" : item.currency;
+  const stock =
+    typeof item.stock === "number"
+      ? item.stock
+      : typeof item.maxQuantity === "number"
+      ? item.maxQuantity
+      : undefined;
   return {
     ...item,
     price: validPrice,
     currency,
+    stock,
+    maxQuantity: stock,
   };
 };
 
@@ -78,36 +95,134 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   const [drawerView, setDrawerView] = useState("cart");
   const isHydrated = useRef(false);
 
+  // Sync live stock from backend inventory database
+  const syncInventory = async () => {
+    try {
+      const res = await fetch("/api/inventory");
+      if (!res.ok) return;
+      const records = await res.json();
+      if (!Array.isArray(records) || records.length === 0) return;
+
+      setCartItems((prev) => {
+        if (!prev.length) return prev;
+        let hasChanges = false;
+        const updated = prev.map((item) => {
+          const matched = records.find((rec: any) => {
+            if (item.shadeId && rec.shadeId === item.shadeId) return true;
+            if (item.sku && rec.shade?.sku && String(rec.shade.sku).trim().toLowerCase() === String(item.sku).trim().toLowerCase()) return true;
+            if (item.key && (item.key.includes(rec.shadeId) || (rec.shade?.sku && item.key.includes(rec.shade.sku)))) return true;
+            if (item.shadeName && rec.shade?.name && String(rec.shade.name).trim().toLowerCase() === String(item.shadeName).trim().toLowerCase()) return true;
+            return false;
+          });
+
+          if (matched && typeof matched.quantity === "number") {
+            const liveStock = matched.quantity;
+            const currentQty = Number(item.quantity) || 1;
+            const clampedQty = liveStock <= 0 ? 0 : Math.min(currentQty, liveStock);
+            if (item.stock !== liveStock || currentQty !== clampedQty) {
+              hasChanges = true;
+              return {
+                ...item,
+                stock: liveStock,
+                maxQuantity: liveStock,
+                quantity: clampedQty,
+              };
+            }
+          }
+          return item;
+        });
+
+        return hasChanges ? updated : prev;
+      });
+    } catch {
+      // ignore
+    }
+  };
+
   useEffect(() => {
     setCartItems(readStored(CART_KEY, []));
     setWishlist(readStored(WISHLIST_KEY, []));
     isHydrated.current = true;
+    syncInventory();
   }, []);
+
+  useEffect(() => {
+    if (drawerOpen && isHydrated.current) {
+      syncInventory();
+    }
+  }, [drawerOpen]);
 
   const addToCart = (item: CartItem) => {
     const itemKey = item?.key || item?.id || item?.slug;
     if (!itemKey) return false;
     const cleanItem = sanitizeCartItem({ ...item, key: String(itemKey) });
     const incomingQty = Math.max(1, Number(cleanItem.quantity) || 1);
+
+    const maxStock =
+      typeof cleanItem.stock === "number"
+        ? cleanItem.stock
+        : typeof cleanItem.maxQuantity === "number"
+        ? cleanItem.maxQuantity
+        : null;
+
+    if (maxStock !== null && maxStock <= 0) {
+      toast.error(`${cleanItem.shadeName || cleanItem.name || "This shade"} is currently out of stock.`);
+      return false;
+    }
+
+    let success = true;
+
     setCartItems((prev) => {
       const existingIndex = prev.findIndex(
         (entry) => entry.key === cleanItem.key
       );
       if (existingIndex > -1) {
+        const existing = prev[existingIndex];
+        const currentQty = Number(existing.quantity) || 1;
+        const effectiveStock =
+          maxStock ??
+          (typeof existing.stock === "number"
+            ? existing.stock
+            : typeof existing.maxQuantity === "number"
+            ? existing.maxQuantity
+            : null);
+
+        if (effectiveStock !== null && currentQty >= effectiveStock) {
+          toast.error(`Stock limit reached! Only ${effectiveStock} unit${effectiveStock === 1 ? "" : "s"} available in stock.`);
+          success = false;
+          return prev;
+        }
+
+        let newQty = currentQty + incomingQty;
+        if (effectiveStock !== null && newQty > effectiveStock) {
+          newQty = effectiveStock;
+          toast.warning(`Only ${effectiveStock} unit${effectiveStock === 1 ? "" : "s"} available in stock. Quantity adjusted.`);
+        }
+
         return prev.map((entry, idx) =>
           idx === existingIndex
             ? {
                 ...entry,
                 ...cleanItem,
+                stock: effectiveStock ?? entry.stock,
+                maxQuantity: effectiveStock ?? entry.maxQuantity,
                 price: Number(cleanItem.price) > 0 ? Number(cleanItem.price) : (Number(entry.price) > 0 ? Number(entry.price) : 899),
-                quantity: (Number(entry.quantity) || 1) + incomingQty,
+                quantity: newQty,
               }
             : entry
         );
       }
-      return [...prev, { ...cleanItem, quantity: incomingQty }];
+
+      let initialQty = incomingQty;
+      if (maxStock !== null && initialQty > maxStock) {
+        initialQty = maxStock;
+        toast.warning(`Only ${maxStock} unit${maxStock === 1 ? "" : "s"} available in stock. Quantity adjusted.`);
+      }
+
+      return [...prev, { ...cleanItem, stock: maxStock ?? cleanItem.stock, maxQuantity: maxStock ?? cleanItem.maxQuantity, quantity: initialQty }];
     });
-    return true;
+
+    return success;
   };
 
   const updateQuantity = (key: string, quantity: number) => {
@@ -117,18 +232,47 @@ export function ShopProvider({ children }: { children: ReactNode }) {
       removeFromCart(key);
       return;
     }
-    setCartItems((prev) =>
-      prev.map((item) =>
-        item.key === key
+
+    setCartItems((prev) => {
+      const item = prev.find((entry) => entry.key === key);
+      if (!item) return prev;
+
+      const currentQty = Number(item.quantity) || 1;
+      const maxStock =
+        typeof item.stock === "number"
+          ? item.stock
+          : typeof item.maxQuantity === "number"
+          ? item.maxQuantity
+          : null;
+
+      if (maxStock !== null && qty > maxStock) {
+        toast.error(`Only ${maxStock} unit${maxStock === 1 ? "" : "s"} available in stock.`);
+        if (currentQty >= maxStock) {
+          return prev;
+        }
+        return prev.map((entry) =>
+          entry.key === key
+            ? {
+                ...entry,
+                price: Number(entry.price) > 0 ? Number(entry.price) : 899,
+                currency: entry.currency === "INR" || !entry.currency ? "₹" : entry.currency,
+                quantity: maxStock,
+              }
+            : entry
+        );
+      }
+
+      return prev.map((entry) =>
+        entry.key === key
           ? {
-              ...item,
-              price: Number(item.price) > 0 ? Number(item.price) : 899,
-              currency: item.currency === "INR" || !item.currency ? "₹" : item.currency,
+              ...entry,
+              price: Number(entry.price) > 0 ? Number(entry.price) : 899,
+              currency: entry.currency === "INR" || !entry.currency ? "₹" : entry.currency,
               quantity: qty,
             }
-          : item
-      )
-    );
+          : entry
+      );
+    });
   };
 
   const removeFromCart = (key: string) => {
