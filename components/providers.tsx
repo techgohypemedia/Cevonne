@@ -1,5 +1,6 @@
 "use client";
 
+import React, { Suspense } from "react";
 import { ThemeProvider } from "next-themes";
 
 import { Toaster } from "@/components/ui/sonner";
@@ -25,8 +26,10 @@ export default function Providers({ children }) {
       <LanguageProvider>
         <ShopProvider>
           <AuthProvider>
-            <ScrollToTop />
-            {children}
+            <Suspense fallback={null}>
+              <ScrollToTop />
+              {children}
+            </Suspense>
             <Toaster position="top-center" richColors closeButton />
           </AuthProvider>
         </ShopProvider>

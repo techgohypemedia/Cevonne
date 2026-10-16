@@ -1,5 +1,10 @@
+import { Suspense } from "react";
 import SiteShell from "@/components/layouts/SiteShell";
 
 export default function SiteLayout({ children }) {
-  return <SiteShell>{children}</SiteShell>;
+  return (
+    <Suspense fallback={null}>
+      <SiteShell>{children}</SiteShell>
+    </Suspense>
+  );
 }
