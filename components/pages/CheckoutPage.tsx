@@ -260,9 +260,16 @@ export default function CheckoutPage() {
       }
 
       clearCart();
-      toast.success(`Order ${savedNumber || ""} saved for dashboard review.`);
+      toast.success(`Order ${savedNumber || ""} placed successfully!`);
       if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("dashboard:data:refresh"));
+      }
+
+      // Automatically redirect away from checkout to track order page
+      if (savedNumber) {
+        navigate(`/track?order=${encodeURIComponent(savedNumber)}&placed=true`);
+      } else {
+        navigate("/profile/orders");
       }
     } catch (error) {
       console.error(error);
@@ -544,10 +551,16 @@ export default function CheckoutPage() {
                   </div>
                   <div className="pt-2 flex flex-col gap-2">
                     <Link
-                      to={`/track?order=${orderId}`}
+                      to={`/track?order=${orderId}&placed=true`}
                       className="inline-flex w-full items-center justify-center rounded-full bg-[var(--primary)] px-4 py-3 text-xs font-bold uppercase tracking-wider text-white shadow-md hover:bg-[var(--primary-700)] transition-all"
                     >
                       Track Order Live
+                    </Link>
+                    <Link
+                      to="/collections"
+                      className="inline-flex w-full items-center justify-center rounded-full border border-[var(--border)] bg-white px-4 py-2.5 text-xs font-semibold text-[var(--primary)] hover:bg-[var(--accent)] transition-all"
+                    >
+                      Continue Shopping
                     </Link>
                     <Link
                       to="/profile/orders"

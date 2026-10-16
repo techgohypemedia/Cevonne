@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react"
 import { Link, useLocation } from "react-router-dom"
 import { Home, Search, ShoppingBag, User } from "lucide-react"
 import { useShop } from "@/context/ShopContext"
+import { useAuth } from "@/context/AuthContext"
 import type { LucideIcon } from "lucide-react"
 
 type NavItem =
@@ -23,6 +24,7 @@ type NavItem =
 const MobileBottomNav = () => {
     const [mounted, setMounted] = useState(false)
     const { cartItems, totalCount } = useShop()
+    const { isAuthenticated } = useAuth()
     const location = useLocation()
 
     useEffect(() => {
@@ -30,13 +32,14 @@ const MobileBottomNav = () => {
     }, [])
 
     const isActive = (path) => location.pathname === path
+    const profilePath = isAuthenticated ? "/profile" : "/login"
 
     const navItems: NavItem[] = [
         { icon: Home, label: "Home", path: "/" },
         { icon: Search, label: "Search", path: "/search" },
         { label: "NEW", path: "/search", isText: true }, // Using /search for NEW for now
         { icon: ShoppingBag, label: "Cart", path: "/cart", showBadge: true },
-        { icon: User, label: "Profile", path: "/profile" },
+        { icon: User, label: isAuthenticated ? "Profile" : "Login", path: profilePath },
     ]
 
     return (

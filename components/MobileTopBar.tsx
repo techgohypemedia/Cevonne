@@ -61,7 +61,7 @@ const MobileTopBar = () => {
     }
 
     return (
-        <div className="relative flex w-full items-center justify-between bg-white px-4 py-3 border-b-0 shadow-none md:hidden">
+        <div className="sticky top-0 z-40 flex w-full items-center justify-between bg-white/95 backdrop-blur-md px-4 py-3 border-b border-neutral-200/80 shadow-sm md:hidden">
             <button
                 onClick={() => navigate(-1)}
                 className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-neutral-100"

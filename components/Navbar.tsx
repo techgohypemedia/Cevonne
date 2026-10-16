@@ -6,6 +6,7 @@ import { Menu, Search, Heart, User, Phone, ShoppingCart } from "lucide-react"
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Separator } from "@/components/ui/separator"
 import { useShop } from "@/context/ShopContext"
+import { useAuth } from "@/context/AuthContext"
 import { useLanguage } from "@/context/LanguageContext"
 import { STATIC_ASSETS } from "@/lib/assets"
 
@@ -16,11 +17,19 @@ const Navbar = () => {
   const [mounted, setMounted] = useState(false)
   const THRESHOLD = 24
   const location = useLocation()
-  const isProductPage = location.pathname.startsWith("/product")
-  const [solid, setSolid] = useState(isProductPage)
+  const isHomePage = location.pathname === "/"
+  const isCollectionPage =
+    location.pathname === "/collections" ||
+    location.pathname.startsWith("/collections/") ||
+    location.pathname.startsWith("/collection/")
+  const hasHeroBanner = isHomePage || isCollectionPage
+
+  // Transparent at top for hero pages (Home & Collections), solid everywhere else
+  const [solid, setSolid] = useState(!hasHeroBanner)
   const ticking = useRef(false)
 
   const { cartItems, wishlist, openDrawer, totalCount } = useShop()
+  const { isAuthenticated } = useAuth()
   const { t } = useLanguage()
 
   useEffect(() => {
@@ -28,33 +37,36 @@ const Navbar = () => {
   }, [])
 
   useEffect(() => {
+    if (!hasHeroBanner) {
+      setSolid(true)
+      return
+    }
+
     const onScroll = () => {
       if (ticking.current) return
       ticking.current = true
       requestAnimationFrame(() => {
-        setSolid(isProductPage || window.scrollY > THRESHOLD)
+        setSolid(window.scrollY > THRESHOLD)
         ticking.current = false
       })
     }
     onScroll()
     window.addEventListener("scroll", onScroll, { passive: true })
     return () => window.removeEventListener("scroll", onScroll)
-  }, [isProductPage])
+  }, [hasHeroBanner])
 
-  const textClass = solid ? "text-[var(--foreground)]" : "text-white"
+  const textClass = solid ? "text-neutral-900" : "text-white"
 
   return (
     <>
       <header
-        className={`hidden md:block fixed inset-x-0 top-0 z-50 w-full transition-[background-color,backdrop-filter,border-color,box-shadow] duration-300
+        className={`hidden md:block fixed inset-x-0 top-0 z-50 w-full transition-[background-color,backdrop-filter,border-color,box-shadow] duration-200
         ${solid
-            ? "bg-[var(--background)]/95 border-transparent backdrop-blur supports-[backdrop-filter]:bg-[var(--background)] shadow-none"
+            ? "bg-white/95 border-b border-neutral-200/80 backdrop-blur-md shadow-sm"
             : "bg-transparent border-transparent shadow-none"
           }`}
         style={{
           backgroundColor: solid ? "rgba(255,255,255,0.95)" : "transparent",
-          boxShadow: "none",
-          borderBottom: "none",
         }}
       >
         <div
@@ -174,9 +186,9 @@ const Navbar = () => {
               )}
             </button>
             <Link
-              to="/profile"
+              to={isAuthenticated ? "/profile" : "/login"}
               className={`inline-flex items-center justify-center hover:opacity-80 transition-colors duration-300 ${textClass}`}
-              aria-label="Account"
+              aria-label={isAuthenticated ? "Account" : "Sign In"}
             >
               <User className="h-5 w-5" strokeWidth={1.5} />
             </Link>

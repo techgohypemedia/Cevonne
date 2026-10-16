@@ -133,45 +133,85 @@ export default function TrackOrderPage() {
   const activeStepIndex = TRACKING_STEPS.findIndex((s) => s.status === currentStatus);
   const safeActiveIndex = activeStepIndex >= 0 ? activeStepIndex : 0;
 
+  const isNewlyPlaced = searchParams.get("placed") === "true";
+
   return (
     <div className="min-h-screen bg-[var(--accent,#faf5f1)] pt-24 pb-16 lg:pt-32">
       <div className="max-w-4xl mx-auto px-4 sm:px-6">
-        {/* Header */}
-        <div className="text-center space-y-3 mb-8">
-          <Badge
-            variant="outline"
-            className="border-[var(--secondary-300,#ead2ef)] text-[var(--primary,#4b0d4b)] uppercase tracking-widest text-[11px] px-3 py-1 font-semibold"
-          >
-            Real-Time Tracking
-          </Badge>
-          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-[var(--primary,#4b0d4b)]">
-            Track Your Cevonne Order
-          </h1>
-          <p className="text-sm text-[var(--muted-foreground,#78716c)] max-w-lg mx-auto">
-            Enter your order number below to check real-time dispatch, packaging, and delivery updates.
-          </p>
-
-          {/* Search Box */}
-          <form onSubmit={handleSearch} className="max-w-md mx-auto mt-6 flex gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="text"
-                value={orderQuery}
-                onChange={(e) => setOrderQuery(e.target.value)}
-                placeholder="e.g. ORD-M7K9..."
-                className="pl-10 h-12 rounded-full border-[var(--border,#e5e5e5)] bg-white text-sm shadow-sm focus-visible:ring-[var(--primary,#4b0d4b)] uppercase font-mono"
-              />
+        {/* Newly Placed Order Celebration Banner */}
+        {isNewlyPlaced && (
+          <div className="rounded-3xl border border-emerald-200 bg-gradient-to-br from-emerald-50 via-teal-50/40 to-white p-6 sm:p-8 text-center space-y-4 shadow-sm mb-8 animate-in fade-in duration-500">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 shadow-inner">
+              <CheckCircle2 className="h-9 w-9" />
             </div>
-            <Button
-              type="submit"
-              disabled={loading || !orderQuery.trim()}
-              className="h-12 px-6 rounded-full bg-[var(--primary,#4b0d4b)] hover:bg-[var(--primary-700,#3d0a45)] text-white font-semibold text-xs uppercase tracking-wider shadow-md"
+            <div className="space-y-1">
+              <span className="inline-block text-xs uppercase font-bold tracking-widest text-emerald-700 bg-emerald-100/80 px-3 py-1 rounded-full">
+                Order Placed Successfully
+              </span>
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-neutral-900 mt-2">
+                Thank you for your purchase! 🎉
+              </h1>
+              <p className="text-sm text-neutral-600 max-w-md mx-auto">
+                Your order{" "}
+                <strong className="font-mono text-neutral-900 font-bold">{activeOrderNumber || order?.number || order?.id}</strong>{" "}
+                is confirmed and being prepared. Track its real-time journey below.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+              <Link
+                to="/collections"
+                className="inline-flex items-center gap-2 rounded-full bg-[var(--primary,#4b0d4b)] px-6 py-3 text-xs font-bold uppercase tracking-wider text-white shadow-md hover:bg-[var(--primary-700,#3d0a45)] transition-all"
+              >
+                <ShoppingBag className="h-4 w-4" /> Continue Shopping
+              </Link>
+              <Link
+                to="/profile/orders"
+                className="inline-flex items-center gap-2 rounded-full border border-neutral-300 bg-white px-5 py-3 text-xs font-semibold text-neutral-800 hover:bg-neutral-50 transition-all shadow-sm"
+              >
+                View My Orders
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {/* Regular Header (Only shown if NOT newly placed) */}
+        {!isNewlyPlaced && (
+          <div className="text-center space-y-3 mb-8">
+            <Badge
+              variant="outline"
+              className="border-[var(--secondary-300,#ead2ef)] text-[var(--primary,#4b0d4b)] uppercase tracking-widest text-[11px] px-3 py-1 font-semibold"
             >
-              {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : "Track"}
-            </Button>
-          </form>
-        </div>
+              Real-Time Tracking
+            </Badge>
+            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-[var(--primary,#4b0d4b)]">
+              Track Your Cevonne Order
+            </h1>
+            <p className="text-sm text-[var(--muted-foreground,#78716c)] max-w-lg mx-auto">
+              Enter your order number below to check real-time dispatch, packaging, and delivery updates.
+            </p>
+
+            {/* Search Box */}
+            <form onSubmit={handleSearch} className="max-w-md mx-auto mt-6 flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  value={orderQuery}
+                  onChange={(e) => setOrderQuery(e.target.value)}
+                  placeholder="e.g. ORD-M7K9..."
+                  className="pl-10 h-12 rounded-full border-[var(--border,#e5e5e5)] bg-white text-sm shadow-sm focus-visible:ring-[var(--primary,#4b0d4b)] uppercase font-mono"
+                />
+              </div>
+              <Button
+                type="submit"
+                disabled={loading || !orderQuery.trim()}
+                className="h-12 px-6 rounded-full bg-[var(--primary,#4b0d4b)] hover:bg-[var(--primary-700,#3d0a45)] text-white font-semibold text-xs uppercase tracking-wider shadow-md"
+              >
+                {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : "Track"}
+              </Button>
+            </form>
+          </div>
+        )}
 
         {/* Error Notification */}
         {error && (

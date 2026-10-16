@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import dynamic from "next/dynamic";
 
 const TrackOrderPage = dynamic(() => import("@/components/pages/TrackOrderPage"), {
@@ -7,5 +8,9 @@ const TrackOrderPage = dynamic(() => import("@/components/pages/TrackOrderPage")
 });
 
 export default function Page() {
-  return <TrackOrderPage />;
+  return (
+    <Suspense fallback={null}>
+      <TrackOrderPage />
+    </Suspense>
+  );
 }

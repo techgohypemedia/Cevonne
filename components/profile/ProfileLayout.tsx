@@ -59,6 +59,10 @@ export default function ProfileLayout({ children }) {
         );
     }
 
+    if (!isAuthenticated) {
+        return <Navigate to={`/login?redirect=${encodeURIComponent(location.pathname)}`} replace />;
+    }
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-[var(--background)] via-[var(--card)] to-[var(--muted)] pt-20 md:pt-24 pb-12">
             <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">

@@ -965,13 +965,13 @@ function OrderDetailDialog({
             </h4>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="space-y-1">
-              <label className="text-[11px] font-semibold text-muted-foreground uppercase">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="sm:col-span-2 space-y-1.5 min-w-0">
+              <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
                 Order Status
               </label>
               <Select value={status} onValueChange={(val) => setStatus(val as OrderStatus)}>
-                <SelectTrigger className="h-10 rounded-xl bg-white border-border/80 text-xs font-semibold">
+                <SelectTrigger className="w-full h-10 rounded-xl bg-white border-border/80 text-xs font-semibold">
                   <SelectValue placeholder="Select Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -987,27 +987,27 @@ function OrderDetailDialog({
               </Select>
             </div>
 
-            <div className="space-y-1">
-              <label className="text-[11px] font-semibold text-muted-foreground uppercase">
+            <div className="space-y-1.5 min-w-0">
+              <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
                 Courier Partner
               </label>
               <Input
                 value={carrier}
                 onChange={(e) => setCarrier(e.target.value)}
                 placeholder="e.g. BlueDart, Delhivery"
-                className="h-10 rounded-xl bg-white border-border/80 text-xs"
+                className="w-full h-10 rounded-xl bg-white border-border/80 text-xs"
               />
             </div>
 
-            <div className="space-y-1">
-              <label className="text-[11px] font-semibold text-muted-foreground uppercase">
+            <div className="space-y-1.5 min-w-0">
+              <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
                 Tracking / AWB #
               </label>
               <Input
                 value={trackingNumber}
                 onChange={(e) => setTrackingNumber(e.target.value)}
                 placeholder="e.g. BLD12345678"
-                className="h-10 rounded-xl bg-white border-border/80 text-xs font-mono"
+                className="w-full h-10 rounded-xl bg-white border-border/80 text-xs font-mono"
               />
             </div>
           </div>
