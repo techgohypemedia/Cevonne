@@ -2,6 +2,8 @@ import { OrderStatus } from "@prisma/client";
 import { z } from "zod";
 
 import { getPrisma } from "../db/prismaClient";
+import { triggerLowStockAlertIfRequired } from "../services/inventory-alert.service";
+import { triggerOrderConfirmationAlert } from "../services/customer-router.service";
 
 const cjsModule = { exports: {} as Record<string, any> };
 const exports = cjsModule.exports as Record<string, any>;
@@ -186,6 +188,15 @@ async function adjustOrderInventory(prisma: any, items: any[], mode: "deduct" | 
             },
           });
         }
+
+        if (mode === "deduct") {
+          triggerLowStockAlertIfRequired({
+            productName: item.name || shade.name || "Cevonne Lipstick",
+            shadeName: shade.name || item.shadeName || "Lipstick Shade",
+            shadeCode: shade.sku || undefined,
+            quantity: shade.inventory ? Math.max(0, (Number(shade.inventory.quantity) || 0) + delta) : Math.max(0, delta > 0 ? delta : 0),
+          });
+        }
       }
     } catch (err) {
       console.warn("Failed to adjust inventory for order item:", item?.name, err);
@@ -275,6 +286,21 @@ exports.createOrder = async (req, res, next) => {
 
     // Automatically deduct ordered quantity from inventory
     await adjustOrderInventory(prisma, payload.items, "deduct");
+
+    // Asynchronously notify customer & team via n8n (WhatsApp + Email)
+    triggerOrderConfirmationAlert({
+      orderNumber: order.number,
+      customerName: payload.shipping?.fullName || "Valued Customer",
+      email: payload.shipping?.email,
+      phone: payload.shipping?.phone,
+      totalAmount: getOrderRevenue(payload.totals),
+      items: (payload.items || []).map((it: any) => ({
+        name: it.name,
+        shade: it.shadeName || it.shade || it.color || "Shade",
+        quantity: it.quantity || 1,
+        price: it.price,
+      })),
+    });
 
     return res.status(201).json(sanitizeOrder(order));
   } catch (error) {

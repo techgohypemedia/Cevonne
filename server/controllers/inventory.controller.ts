@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { getPrisma } from "../db/prismaClient";
+import { triggerLowStockAlertIfRequired } from "../services/inventory-alert.service";
 
 const cjsModule = { exports: {} as Record<string, any> };
 const exports = cjsModule.exports as Record<string, any>;
@@ -93,6 +94,14 @@ exports.updateInventory = async (req, res, next) => {
           },
         },
       },
+    });
+
+    // Real-time notification if stock drops to or below threshold
+    triggerLowStockAlertIfRequired({
+      productName: record.shade?.product?.name || "Cevonne Product",
+      shadeName: record.shade?.name || "Lipstick Shade",
+      shadeCode: record.shade?.sku || undefined,
+      quantity: record.quantity,
     });
 
     return res.status(200).json(record);
