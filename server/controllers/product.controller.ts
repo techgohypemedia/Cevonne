@@ -3,6 +3,7 @@ import { Prisma, ReviewStatus } from "@prisma/client";
 import sanitizeHtml from "sanitize-html";
 
 import { getPrisma } from "../db/prismaClient";
+import { triggerLowStockAlertIfRequired } from "../services/inventory-alert.service";
 import { normalizeUploadedAssetUrl } from "@/lib/asset-url";
 
 const cjsModule = { exports: {} as Record<string, any> };
@@ -711,7 +712,7 @@ exports.updateProduct = async (req, res, next) => {
       });
 
       if (payload.shades.length) {
-        await Promise.all(
+                await Promise.all(
           payload.shades.map((shade) =>
             prisma.shade.create({
               data: {
@@ -733,6 +734,16 @@ exports.updateProduct = async (req, res, next) => {
             })
           )
         );
+
+        // Notify low stock if any shade falls below threshold
+        for (const shade of payload.shades) {
+          triggerLowStockAlertIfRequired({
+            productName: product.name,
+            shadeName: shade.name,
+            shadeCode: shade.sku ?? undefined,
+            quantity: shade.quantity ?? 0,
+          });
+        }
       }
     }
 
