@@ -773,6 +773,72 @@ exports.getWeeklyBusinessMetrics = async (_req: any, res: any, next: any) => {
 };
 
 
+
+exports.recordOptOut = async (req: any, res: any, next: any) => {
+  try {
+    const body = req.body || {};
+    const phone = (body.phone as string)?.trim() || null;
+    const email = (body.email as string)?.trim().toLowerCase() || null;
+    const keyword = (body.keyword as string)?.trim().toUpperCase() || "STOP";
+    const channel = (body.channel as string)?.trim().toUpperCase() || "WHATSAPP";
+
+    if (!phone && !email) {
+      return res.status(400).json({ status: "ERROR", message: "Phone or email is required to opt-out" });
+    }
+
+    const prisma = await getPrisma();
+
+    // Check if already opted out
+    const existing = await prisma.cevonne_g3_opt_out_sync.findFirst({
+      where: {
+        OR: [
+          ...(phone ? [{ phone }] : []),
+          ...(email ? [{ email }] : []),
+        ],
+      },
+    });
+
+    if (existing) {
+      return res.status(200).json({
+        status: "SUCCESS",
+        message: "Contact is already opted out",
+        alreadyOptedOut: true,
+        phone,
+        email,
+      });
+    }
+
+    await prisma.cevonne_g3_opt_out_sync.create({
+      data: {
+        phone,
+        email,
+        channel,
+        opt_out_keyword: keyword,
+        source_platform: channel,
+        source_event: "CUSTOMER_OPT_OUT",
+        payload: {
+          keyword,
+          channel,
+          timestamp: new Date().toISOString(),
+          actor: "customer_inbound",
+        },
+      },
+    });
+
+    return res.status(200).json({
+      status: "SUCCESS",
+      message: "Customer successfully opted out. Future automated marketing messages blocked.",
+      alreadyOptedOut: false,
+      phone,
+      email,
+      optedOutAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+
 cjsModule.exports = {
   createOrder: exports.createOrder,
   getMyOrders: exports.getMyOrders,
@@ -782,6 +848,7 @@ cjsModule.exports = {
   checkCustomerRecoveryStatus: exports.checkCustomerRecoveryStatus,
   checkCouponStatus: exports.checkCouponStatus,
   getWeeklyBusinessMetrics: exports.getWeeklyBusinessMetrics,
+  recordOptOut: exports.recordOptOut,
 };
 
 export default cjsModule.exports;
