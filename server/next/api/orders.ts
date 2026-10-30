@@ -32,6 +32,10 @@ export const dispatchOrdersRoute = async (request: Request, segments: string[] =
     return runController(request, orderController.getMyOrders, { user: auth });
   }
 
+  if ((first === "check-recovery-status" || first === "check-recent") && request.method === "GET") {
+    return runController(request, orderController.checkCustomerRecoveryStatus);
+  }
+
   if (first === "track" && request.method === "GET") {
     const url = new URL(request.url);
     const orderNumber = url.searchParams.get("number") || url.searchParams.get("id");
