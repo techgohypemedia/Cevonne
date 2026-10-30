@@ -1,0 +1,298 @@
+{
+  "name": "Cevonne - G3 WhatsApp Inbound Opt-Out (STOP Handler)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cevonne/whatsapp-inbound",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "11111111-aaaa-4111-8111-111111111111",
+      "name": "Webhook - WhatsApp Inbound (POST)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        200,
+        300
+      ],
+      "webhookId": "cevonne-whatsapp-inbound-post"
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "cevonne/whatsapp-inbound",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "22222222-bbbb-4222-8222-222222222222",
+      "name": "Webhook - Meta Verification (GET)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        200,
+        500
+      ],
+      "webhookId": "cevonne-whatsapp-inbound-get"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.query['hub.challenge'] || 'OK' }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "33333333-cccc-4333-8333-333333333333",
+      "name": "Respond - Meta Hub Challenge",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        460,
+        500
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "\n// Extract message details from Meta WhatsApp webhook or manual payload\nconst body = $input.first().json.body || $input.first().json || {};\n\nlet phone = null;\nlet messageText = '';\nlet isOptOut = false;\n\n// 1. Direct API / Test format: { phone: '...', keyword: 'STOP' }\nif (body.phone) {\n  phone = String(body.phone).replace(/[^0-9]/g, '');\n  messageText = String(body.keyword || body.message || 'STOP').trim();\n}\n\n// 2. Meta WhatsApp Inbound Webhook format\ntry {\n  const entry = body.entry?.[0];\n  const change = entry?.changes?.[0]?.value;\n  const message = change?.messages?.[0];\n  if (message) {\n    phone = String(message.from || '').replace(/[^0-9]/g, '');\n    messageText = String(message.text?.body || '').trim();\n  }\n} catch (e) {}\n\nconst normalized = messageText.toUpperCase();\nconst optOutKeywords = ['STOP', 'UNSUBSCRIBE', 'CANCEL', 'OPTOUT', 'STOPALL'];\nisOptOut = optOutKeywords.some(k => normalized === k || normalized.startsWith(k + ' '));\n\nreturn [{\n  json: {\n    is_opt_out: isOptOut,\n    phone: phone,\n    keyword: messageText,\n    received_at: new Date().toISOString()\n  }\n}];\n"
+      },
+      "id": "44444444-dddd-4444-8444-444444444444",
+      "name": "Code - Parse Inbound Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.is_opt_out }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "c2",
+              "leftValue": "={{ $json.phone?.length >= 10 }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "55555555-eeee-4555-8555-555555555555",
+      "name": "IF - Is STOP Keyword?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        700,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://cevonne.vercel.app/api/orders/record-opt-out",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"phone\": {{ JSON.stringify($json.phone) }},\n  \"keyword\": {{ JSON.stringify($json.keyword) }},\n  \"channel\": \"WHATSAPP\"\n}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "66666666-ffff-4666-8666-666666666666",
+      "name": "HTTP - Record Opt-Out in Database",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        940,
+        220
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v21.0/1269614229578624/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer EAASAfHd2LZCkBSMprh9wr9sTuJbZBIySujumZA85WZARcvOZBM3VjOQKZAx0Jufm8uPkVKNZCNxBXrRYJjPybm9SgqrCFXPCzNhYbqfCAwRUCNiguUml6xPEWvZBzbcN9z7LjwGdACf2I1hwgansXqYT1ylI2D9b8rnwScZCjf6ZClVKuZBba0JivAmSVn6z8fWAAZDZD"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"recipient_type\": \"individual\",\n  \"to\": {{ JSON.stringify($('Code - Parse Inbound Message').first().json.phone) }},\n  \"type\": \"text\",\n  \"text\": {\n    \"preview_url\": false,\n    \"body\": \"You have successfully unsubscribed from Cevonne notifications. You will not receive any further automated messages. You can visit us anytime at https://cevonne.vercel.app\"\n  }\n}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "77777777-1111-4777-8777-777777777777",
+      "name": "WhatsApp - Confirm Unsubscribe to Customer",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1180,
+        220
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"SUCCESS\",\n  \"opt_out_recorded\": true,\n  \"phone\": {{ JSON.stringify($('Code - Parse Inbound Message').first().json.phone) }},\n  \"message\": \"Opt-out registered and confirmation sent.\"\n}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "88888888-2222-4888-8888-888888888888",
+      "name": "Respond - Opt-Out Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1400,
+        220
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"IGNORED\",\n  \"reason\": \"Message was not an opt-out keyword.\"\n}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "99999999-3333-4999-8999-999999999999",
+      "name": "Respond - Non-Opt-Out Ignored",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        940,
+        380
+      ],
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Webhook - WhatsApp Inbound (POST)": {
+      "main": [
+        [
+          {
+            "node": "Code - Parse Inbound Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook - Meta Verification (GET)": {
+      "main": [
+        [
+          {
+            "node": "Respond - Meta Hub Challenge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Parse Inbound Message": {
+      "main": [
+        [
+          {
+            "node": "IF - Is STOP Keyword?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Is STOP Keyword?": {
+      "main": [
+        [
+          {
+            "node": "HTTP - Record Opt-Out in Database",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond - Non-Opt-Out Ignored",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP - Record Opt-Out in Database": {
+      "main": [
+        [
+          {
+            "node": "WhatsApp - Confirm Unsubscribe to Customer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WhatsApp - Confirm Unsubscribe to Customer": {
+      "main": [
+        [
+          {
+            "node": "Respond - Opt-Out Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

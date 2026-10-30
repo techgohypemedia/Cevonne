@@ -1,0 +1,461 @@
+{
+  "name": "Cevonne - Customer Order Confirmation & Cart Recovery",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cevonne/customer-router",
+        "responseMode": "onReceived",
+        "responseData": "OK",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -300,
+        0
+      ],
+      "id": "c1a2b3c4-0001-4444-9999-custhook001",
+      "name": "Customer Event Webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "e44d32a1-b8ef-410a-8d1e-condition1",
+              "leftValue": "={{ $json.body ? $json.body.event : $json.event }}",
+              "rightValue": "ORDER_CREATED",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -60,
+        0
+      ],
+      "id": "c1a2b3c4-0002-4444-9999-checkevent02",
+      "name": "Order or Abandoned Cart?"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nreturn items.map(item => {\n  const d = item.json.body || item.json;\n  const order = d.order || {};\n  const customerName = order.customerName || order.fullName || 'Valued Customer';\n  const customerPhone = order.phone || d.phone || '';\n  const customerEmail = order.email || d.email || '';\n  const orderNumber = order.orderNumber || order.id || 'CVN-' + Date.now().toString(36).toUpperCase();\n  const totalAmount = order.totalAmount || order.total || '0';\n  const itemsList = Array.isArray(order.items) ? order.items : [];\n  \n  const itemsSummary = itemsList.map(it => `• ${it.name || 'Lipstick'} (${it.shade || 'Shade'}) x${it.quantity || 1}`).join('\\n');\n\n  // WhatsApp Message for Customer\n  const whatsappMessage = \n`✨ *THANK YOU FOR YOUR ORDER!* ✨\\n\\n` +\n`Hello ${customerName},\\n` +\n`Aapka Cevonne order successfully confirm ho gaya hai! 💄\\n\\n` +\n`📋 *Order ID:* ${orderNumber}\\n` +\n`💰 *Total Amount:* ₹${totalAmount}\\n\\n` +\n`*Items:*\\n${itemsSummary}\\n\\n` +\n`Hamari team aapke shades ko carefully pack kar rahi hai. Jaise hi dispatch hoga, hum tracking link share karenge! 🚀\\n\\n` +\n`Need help? Reply to this message anytime!\\n` +\n`_Team Cevonne Beauty_`;\n\n  // Email HTML for Customer\n  const emailHtml = `\n    <div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: auto; background-color: #0b0b0b; color: #fff; border-radius: 12px; overflow: hidden;\">\n      <div style=\"background: linear-gradient(135deg, #111, #e11d48); padding: 30px 20px; text-align: center;\">\n        <h1 style=\"margin: 0; font-size: 24px; letter-spacing: 2px;\">CEVONNE</h1>\n        <p style=\"margin: 6px 0 0; font-size: 14px; opacity: 0.9;\">Order Confirmation - ${orderNumber}</p>\n      </div>\n      <div style=\"padding: 24px;\">\n        <p style=\"font-size: 16px;\">Hi <strong>${customerName}</strong>,</p>\n        <p style=\"color: #ccc; line-height: 1.6;\">Thank you for choosing Cevonne! We have received your order and our beauty studio is preparing your premium lipstick items.</p>\n        <div style=\"background-color: #1a1a1a; padding: 16px; border-radius: 8px; margin: 20px 0;\">\n          <h3 style=\"margin-top: 0; color: #fda4af; font-size: 16px;\">Order Details</h3>\n          <p style=\"margin: 4px 0;\"><strong>Order Number:</strong> ${orderNumber}</p>\n          <p style=\"margin: 4px 0;\"><strong>Total Paid:</strong> ₹${totalAmount}</p>\n        </div>\n        <p style=\"font-size: 13px; color: #888; text-align: center;\">If you have any questions, simply reply to this email.</p>\n      </div>\n    </div>\n  `;\n\n  return {\n    json: {\n      ...d,\n      customer_phone: customerPhone.replace(/[^0-9]/g, ''),\n      customer_email: customerEmail,\n      customer_name: customerName,\n      whatsapp_message: whatsappMessage,\n      email_subject: `Order Confirmed: ${orderNumber} - Thank you for shopping with Cevonne! ✨`,\n      email_html: emailHtml\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        -160
+      ],
+      "id": "c1a2b3c4-0003-4444-9999-formatorder03",
+      "name": "Format Order Confirmation"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v21.0/1269614229578624/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer EAASAfHd2LZCkBSMprh9wr9sTuJbZBIySujumZA85WZARcvOZBM3VjOQKZAx0Jufm8uPkVKNZCNxBXrRYJjPybm9SgqrCFXPCzNhYbqfCAwRUCNiguUml6xPEWvZBzbcN9z7LjwGdACf2I1hwgansXqYT1ylI2D9b8rnwScZCjf6ZClVKuZBba0JivAmSVn6z8fWAAZDZD"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"recipient_type\": \"individual\",\n  \"to\": \"{{ $json.customer_phone || '919354243943' }}\",\n  \"type\": \"text\",\n  \"text\": {\n    \"preview_url\": false,\n    \"body\": {{ JSON.stringify($json.whatsapp_message) }}\n  }\n}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1240,
+        100
+      ],
+      "id": "c1a2b3c4-0004-4444-9999-waorder004",
+      "name": "Send Order WhatsApp"
+    },
+    {
+      "parameters": {
+        "fromEmail": "orders@cevonne.com",
+        "toEmail": "={{ $json.customer_email || 'admin@cevonne.com' }}",
+        "subject": "={{ $json.email_subject }}",
+        "html": "={{ $json.email_html }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        980,
+        260
+      ],
+      "id": "c1a2b3c4-0005-4444-9999-mailorder05",
+      "name": "Send Order Email"
+    },
+    {
+      "parameters": {
+        "amount": 30,
+        "unit": "minutes"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        220,
+        180
+      ],
+      "id": "c1a2b3c4-0006-4444-9999-wait30m006",
+      "name": "Wait 30 Minutes"
+    },
+    {
+      "parameters": {
+        "jsCode": "const cart = $('Wait 30 Minutes').first().json;\nconst d = cart.body || cart;\nconst customerName = d.customerName || d.fullName || 'there';\nconst customerPhone = d.phone || '';\nconst customerEmail = d.email || '';\nconst checkoutUrl = 'https://cevonne.vercel.app/cart';\n\nconst whatsappMessage = \n`💄 *Aapka shade cart me wait kar raha hai!* ✨\\n\\n` +\n`Hey ${customerName},\\n` +\n`Aapne Cevonne cart me lipstick select ki thi par checkout complete nahi kiya.\\n\\n` +\n`Aapke cart par humne *FREE SHIPPING* unlock kar di hai! 🎁\\n\\n` +\n`Abhi apna order complete karein:\\n` +\n`👉 ${checkoutUrl}\\n\\n` +\n`_Limited stock available._`;\n\nconst emailHtml = `\n  <div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: auto; background-color: #0b0b0b; color: #fff; border-radius: 12px; overflow: hidden;\">\n    <div style=\"background: linear-gradient(135deg, #be123c, #fb7185); padding: 30px 20px; text-align: center;\">\n      <h2 style=\"margin: 0; color: #fff;\">Did you forget something gorgeous? 💋</h2>\n    </div>\n    <div style=\"padding: 24px;\">\n      <p>Hey <strong>${customerName}</strong>,</p>\n      <p style=\"color: #ccc; line-height: 1.6;\">Your favorite Cevonne shade is reserved in your cart, but stock is running out fast.</p>\n      <div style=\"text-align: center; margin: 30px 0;\">\n        <a href=\"${checkoutUrl}\" style=\"background-color: #e11d48; color: #fff; padding: 14px 28px; text-decoration: none; border-radius: 9999px; font-weight: bold;\">Complete My Order &rarr;</a>\n      </div>\n    </div>\n  </div>\n`;\n\nreturn [{\n  json: {\n    ...d,\n    customer_phone: customerPhone.replace(/[^0-9]/g, ''),\n    customer_email: customerEmail,\n    whatsapp_message: whatsappMessage,\n    email_subject: \"Your Cevonne cart is waiting (Free Shipping Unlocked! 💄)\",\n    email_html: emailHtml\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1260,
+        680
+      ],
+      "id": "c1a2b3c4-0007-4444-9999-formatcart07",
+      "name": "Format Cart Recovery"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v21.0/1269614229578624/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer EAASAfHd2LZCkBSMprh9wr9sTuJbZBIySujumZA85WZARcvOZBM3VjOQKZAx0Jufm8uPkVKNZCNxBXrRYJjPybm9SgqrCFXPCzNhYbqfCAwRUCNiguUml6xPEWvZBzbcN9z7LjwGdACf2I1hwgansXqYT1ylI2D9b8rnwScZCjf6ZClVKuZBba0JivAmSVn6z8fWAAZDZD"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"recipient_type\": \"individual\",\n  \"to\": \"{{ $json.customer_phone || '919354243943' }}\",\n  \"type\": \"text\",\n  \"text\": {\n    \"preview_url\": false,\n    \"body\": {{ JSON.stringify($json.whatsapp_message) }}\n  }\n}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1740,
+        600
+      ],
+      "id": "c1a2b3c4-0008-4444-9999-wacart008",
+      "name": "Send Recovery WhatsApp"
+    },
+    {
+      "parameters": {
+        "fromEmail": "concierge@cevonne.com",
+        "toEmail": "={{ $json.customer_email || 'admin@cevonne.com' }}",
+        "subject": "={{ $json.email_subject }}",
+        "html": "={{ $json.email_html }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1500,
+        780
+      ],
+      "id": "c1a2b3c4-0009-4444-9999-mailcart09",
+      "name": "Send Recovery Email"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://cevonne.vercel.app/api/orders/check-recovery-status?email={{ ($json.body || $json).email }}&phone={{ ($json.body || $json).phone }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "check-recovery-status-id",
+      "name": "Check Customer Purchase Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        800,
+        550
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "suppress-condition-1",
+              "leftValue": "={{ $json.shouldSuppress }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-should-suppress-id",
+      "name": "Already Purchased or Opted Out?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1020,
+        550
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Cart recovery suppressed safely because customer placed an order or opted out\nconst checkResult = $input.first().json;\nconst cart = $('Wait 30 Minutes').first().json;\nconst d = cart.body || cart;\n\nreturn [{\n  json: {\n    status: 'SUPPRESSED',\n    reason: checkResult.reason || 'PURCHASE_COMPLETED',\n    customer: d.customerName || d.email || d.phone,\n    orderNumber: checkResult.orderNumber || null,\n    message: 'Recovery message suppressed. Customer will NOT be spammed.'\n  }\n}];"
+      },
+      "id": "suppressed-log-id",
+      "name": "Recovery Suppressed (No Spam)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1260,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "has-phone-cond-1",
+              "leftValue": "={{ ($json.customer_phone || '').length }}",
+              "rightValue": 10,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-has-order-phone-id",
+      "name": "Has Order Phone?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        980,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "has-phone-cond-2",
+              "leftValue": "={{ ($json.customer_phone || '').length }}",
+              "rightValue": 10,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-has-recovery-phone-id",
+      "name": "Has Recovery Phone?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1500,
+        600
+      ]
+    }
+  ],
+  "connections": {
+    "Customer Event Webhook": {
+      "main": [
+        [
+          {
+            "node": "Order or Abandoned Cart?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Order or Abandoned Cart?": {
+      "main": [
+        [
+          {
+            "node": "Format Order Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait 30 Minutes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Order Confirmation": {
+      "main": [
+        [
+          {
+            "node": "Has Order Phone?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send Order Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 30 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Check Customer Purchase Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Cart Recovery": {
+      "main": [
+        [
+          {
+            "node": "Has Recovery Phone?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send Recovery Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Customer Purchase Status": {
+      "main": [
+        [
+          {
+            "node": "Already Purchased or Opted Out?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Already Purchased or Opted Out?": {
+      "main": [
+        [
+          {
+            "node": "Recovery Suppressed (No Spam)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Cart Recovery",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Order Phone?": {
+      "main": [
+        [
+          {
+            "node": "Send Order WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Recovery Phone?": {
+      "main": [
+        [
+          {
+            "node": "Send Recovery WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

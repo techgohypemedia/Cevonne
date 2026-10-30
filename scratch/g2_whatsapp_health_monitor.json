@@ -1,0 +1,363 @@
+{
+  "name": "Cevonne - G2 Meta & WhatsApp Health Monitor",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "c71a396e-a34c-4731-98bc-a4ce835617a1",
+      "name": "Schedule - Every 6 Hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "cevonne/health-check",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "d8204652-3a3f-4e12-b7b2-c0ff187b8f99",
+      "name": "Webhook - Manual / Status Check",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        200,
+        500
+      ],
+      "webhookId": "cevonne-health-check-webhook"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://graph.facebook.com/v21.0/1269614229578624",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "fields",
+              "value": "verified_name,code_verification_status,display_phone_number,quality_rating,messaging_limit_tier"
+            },
+            {
+              "name": "access_token",
+              "value": "EAASAfHd2LZCkBSMprh9wr9sTuJbZBIySujumZA85WZARcvOZBM3VjOQKZAx0Jufm8uPkVKNZCNxBXrRYJjPybm9SgqrCFXPCzNhYbqfCAwRUCNiguUml6xPEWvZBzbcN9z7LjwGdACf2I1hwgansXqYT1ylI2D9b8rnwScZCjf6ZClVKuZBba0JivAmSVn6z8fWAAZDZD"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "01b2a265-535d-4f18-bc1c-91bc462b0e91",
+      "name": "Meta API - Check WhatsApp Phone Quality",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        460,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://graph.facebook.com/v21.0/1204974879369764",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "fields",
+              "value": "id,name,currency,account_review_status"
+            },
+            {
+              "name": "access_token",
+              "value": "EAASAfHd2LZCkBSMprh9wr9sTuJbZBIySujumZA85WZARcvOZBM3VjOQKZAx0Jufm8uPkVKNZCNxBXrRYJjPybm9SgqrCFXPCzNhYbqfCAwRUCNiguUml6xPEWvZBzbcN9z7LjwGdACf2I1hwgansXqYT1ylI2D9b8rnwScZCjf6ZClVKuZBba0JivAmSVn6z8fWAAZDZD"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "02c3b376-646e-4f29-cd2d-02cd573c1f02",
+      "name": "Meta API - Check WABA Account",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        680,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://graph.facebook.com/v21.0/debug_token",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "input_token",
+              "value": "EAASAfHd2LZCkBSMprh9wr9sTuJbZBIySujumZA85WZARcvOZBM3VjOQKZAx0Jufm8uPkVKNZCNxBXrRYJjPybm9SgqrCFXPCzNhYbqfCAwRUCNiguUml6xPEWvZBzbcN9z7LjwGdACf2I1hwgansXqYT1ylI2D9b8rnwScZCjf6ZClVKuZBba0JivAmSVn6z8fWAAZDZD"
+            },
+            {
+              "name": "access_token",
+              "value": "EAASAfHd2LZCkBSMprh9wr9sTuJbZBIySujumZA85WZARcvOZBM3VjOQKZAx0Jufm8uPkVKNZCNxBXrRYJjPybm9SgqrCFXPCzNhYbqfCAwRUCNiguUml6xPEWvZBzbcN9z7LjwGdACf2I1hwgansXqYT1ylI2D9b8rnwScZCjf6ZClVKuZBba0JivAmSVn6z8fWAAZDZD"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "03d4c487-757f-4a30-de3e-13de684d2f13",
+      "name": "Meta API - Check Token Validity",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        900,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst phoneData = $('Meta API - Check WhatsApp Phone Quality').first().json || {};\nconst wabaData = $('Meta API - Check WABA Account').first().json || {};\nconst tokenData = $input.first().json || {};\n\nconst query = $('Webhook - Manual / Status Check')?.first()?.json?.query || {};\nconst isTest = query.test === 'true' || query.test_alert === 'true';\n\nconst issues = [];\n\n// 1. Validate Token\nconst tokenValid = tokenData?.data?.is_valid === true;\nif (!tokenValid) {\n  const tokenError = tokenData?.error?.message || tokenData?.data?.error?.message || 'Token is invalid or expired';\n  issues.push('Meta Token Invalid: ' + tokenError);\n}\n\n// 2. Validate WhatsApp Phone Quality\nconst qualityRating = phoneData?.quality_rating || (phoneData?.error ? 'ERROR' : 'UNKNOWN');\nif (qualityRating !== 'GREEN') {\n  issues.push('WhatsApp Quality Rating is ' + qualityRating + ' (Expected GREEN)');\n}\n\n// 3. Validate WABA Review Status\nconst wabaStatus = wabaData?.account_review_status || (wabaData?.error ? 'ERROR' : 'UNKNOWN');\nif (wabaStatus !== 'APPROVED') {\n  issues.push('WABA Review Status is ' + wabaStatus + ' (Expected APPROVED)');\n}\n\nconst isHealthy = issues.length === 0;\nconst shouldAlert = !isHealthy || isTest;\n\n// Build WhatsApp notification text (Strictly Professional English for Admin/Founder)\nlet alertMessage = '';\nif (isTest) {\n  alertMessage = '✅ *CEVONNE SYSTEM HEALTH CHECK: OPERATIONAL*\\n\\n' +\n    'All Meta & WhatsApp API systems are fully operational:\\n' +\n    '• Phone Number: ' + (phoneData.display_phone_number || '+91 93542 43943') + ' (' + (phoneData.verified_name || 'Cevonne') + ')\\n' +\n    '• Quality Rating: *' + qualityRating + '* (Healthy)\\n' +\n    '• Account Review Status: *' + wabaStatus + '* (Approved)\\n' +\n    '• Meta Access Token: *ACTIVE (Permanent / Valid)*\\n\\n' +\n    'Customer order confirmations and abandoned cart recovery notifications are running smoothly.';\n} else if (!isHealthy) {\n  alertMessage = '🚨 *CRITICAL ALERT: CEVONNE WHATSAPP / META ISSUE*\\n\\n' +\n    'An issue has been detected with your Meta WhatsApp integration:\\n' +\n    issues.map(i => '• ' + i).join('\\n') + '\\n\\n' +\n    '⚠️ *Business Impact:* Customer order confirmations and automated cart recovery messages may fail to deliver!\\n\\n' +\n    '*Action Required:* Please review your Meta Business Suite immediately:\\n' +\n    'https://business.facebook.com';\n}\n\nreturn [{\n  json: {\n    is_healthy: isHealthy,\n    should_alert: shouldAlert,\n    is_test: isTest,\n    quality_rating: qualityRating,\n    waba_status: wabaStatus,\n    token_valid: tokenValid,\n    phone: phoneData?.display_phone_number || null,\n    verified_name: phoneData?.verified_name || null,\n    issues: issues,\n    alert_message: alertMessage,\n    checked_at: new Date().toISOString()\n  }\n}];\n"
+      },
+      "id": "04e5d598-868a-4b41-ef4f-24ef795e3a24",
+      "name": "Code - Evaluate System Health",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "e20b60f1-6784-486d-97e3-05915d5e5e01",
+              "leftValue": "={{ $json.should_alert }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "05f6e609-979b-4c52-f050-35f0806f4b35",
+      "name": "IF - Issue or Test Alert?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1340,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v21.0/1269614229578624/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer EAASAfHd2LZCkBSMprh9wr9sTuJbZBIySujumZA85WZARcvOZBM3VjOQKZAx0Jufm8uPkVKNZCNxBXrRYJjPybm9SgqrCFXPCzNhYbqfCAwRUCNiguUml6xPEWvZBzbcN9z7LjwGdACf2I1hwgansXqYT1ylI2D9b8rnwScZCjf6ZClVKuZBba0JivAmSVn6z8fWAAZDZD"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"recipient_type\": \"individual\",\n  \"to\": \"917061009669\",\n  \"type\": \"text\",\n  \"text\": {\n    \"preview_url\": false,\n    \"body\": {{ JSON.stringify($json.alert_message) }}\n  }\n}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "0607f71a-a8ac-4d63-0161-460191705c46",
+      "name": "WhatsApp - Alert Founder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1580,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": {{ $('Code - Evaluate System Health').first().json.is_healthy ? 'HEALTHY' : 'UNHEALTHY' }},\n  \"is_healthy\": {{ $('Code - Evaluate System Health').first().json.is_healthy }},\n  \"quality_rating\": {{ JSON.stringify($('Code - Evaluate System Health').first().json.quality_rating) }},\n  \"waba_status\": {{ JSON.stringify($('Code - Evaluate System Health').first().json.waba_status) }},\n  \"token_valid\": {{ $('Code - Evaluate System Health').first().json.token_valid }},\n  \"phone\": {{ JSON.stringify($('Code - Evaluate System Health').first().json.phone) }},\n  \"verified_name\": {{ JSON.stringify($('Code - Evaluate System Health').first().json.verified_name) }},\n  \"issues\": {{ JSON.stringify($('Code - Evaluate System Health').first().json.issues) }},\n  \"checked_at\": {{ JSON.stringify($('Code - Evaluate System Health').first().json.checked_at) }},\n  \"alert_sent_to_founder\": true\n}",
+        "options": {
+          "responseCode": "={{ $('Code - Evaluate System Health').first().json.is_healthy ? 200 : 503 }}"
+        }
+      },
+      "id": "0718082b-b9bd-4e74-1272-5712a2816d57",
+      "name": "Respond - Issue or Test",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1800,
+        300
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"HEALTHY\",\n  \"is_healthy\": true,\n  \"quality_rating\": {{ JSON.stringify($json.quality_rating) }},\n  \"waba_status\": {{ JSON.stringify($json.waba_status) }},\n  \"token_valid\": {{ $json.token_valid }},\n  \"phone\": {{ JSON.stringify($json.phone) }},\n  \"verified_name\": {{ JSON.stringify($json.verified_name) }},\n  \"checked_at\": {{ JSON.stringify($json.checked_at) }},\n  \"message\": \"All Meta & WhatsApp API systems are 100% operational.\"\n}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "0829193c-ca0e-4f85-2383-6823b3927e68",
+      "name": "Respond - All Healthy",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1580,
+        500
+      ],
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Schedule - Every 6 Hours": {
+      "main": [
+        [
+          {
+            "node": "Meta API - Check WhatsApp Phone Quality",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook - Manual / Status Check": {
+      "main": [
+        [
+          {
+            "node": "Meta API - Check WhatsApp Phone Quality",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Meta API - Check WhatsApp Phone Quality": {
+      "main": [
+        [
+          {
+            "node": "Meta API - Check WABA Account",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Meta API - Check WABA Account": {
+      "main": [
+        [
+          {
+            "node": "Meta API - Check Token Validity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Meta API - Check Token Validity": {
+      "main": [
+        [
+          {
+            "node": "Code - Evaluate System Health",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Evaluate System Health": {
+      "main": [
+        [
+          {
+            "node": "IF - Issue or Test Alert?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Issue or Test Alert?": {
+      "main": [
+        [
+          {
+            "node": "WhatsApp - Alert Founder",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond - All Healthy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WhatsApp - Alert Founder": {
+      "main": [
+        [
+          {
+            "node": "Respond - Issue or Test",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

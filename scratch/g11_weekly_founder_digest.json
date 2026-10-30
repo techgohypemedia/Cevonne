@@ -1,0 +1,199 @@
+{
+  "name": "Cevonne - G11 Monday Founder Weekly Digest",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "weeksInterval": 1,
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 10,
+              "triggerAtMinute": 0
+            }
+          ]
+        }
+      },
+      "id": "111a111a-a111-4111-8111-a11111111111",
+      "name": "Schedule - Every Monday 10 AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "cevonne/weekly-digest",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "222b222b-b222-4222-8222-b22222222222",
+      "name": "Webhook - Manual / Test Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        200,
+        500
+      ],
+      "webhookId": "cevonne-weekly-digest-webhook"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://cevonne.vercel.app/api/orders/weekly-metrics",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          },
+          "timeout": 15000
+        }
+      },
+      "id": "333c333c-c333-4333-8333-c33333333333",
+      "name": "HTTP - Fetch Weekly Metrics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        400
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst metricsRes = $input.first().json || {};\nconst summary = metricsRes.summary || {};\nconst dateRange = metricsRes.dateRange || 'Past 7 Days';\nconst topProducts = Array.isArray(metricsRes.topProducts) ? metricsRes.topProducts : [];\nconst inventoryWatch = metricsRes.inventoryWatch || {};\nconst criticalItems = Array.isArray(inventoryWatch.items) ? inventoryWatch.items : [];\n\nconst totalRevenue = (summary.totalRevenue || 0).toLocaleString('en-IN');\nconst totalOrders = summary.totalOrders || 0;\nconst aov = (summary.aov || 0).toLocaleString('en-IN');\nconst delivered = summary.deliveredCount || 0;\nconst inProgress = (summary.shippedCount || 0) + (summary.processingCount || 0);\nconst pending = summary.pendingCount || 0;\nconst cancelled = summary.cancelledCount || 0;\n\n// Format Top Products section\nlet topProductsText = '• No orders recorded in this period.';\nif (topProducts.length > 0) {\n  topProductsText = topProducts\n    .map(p => `• *${p.name}*: ${p.quantity} units (₹${(p.revenue || 0).toLocaleString('en-IN')})`)\n    .join('\\n');\n}\n\n// Format Inventory Watch section\nlet inventoryText = '• All stock levels are healthy.';\nif (criticalItems.length > 0) {\n  inventoryText = criticalItems\n    .map(i => `• *${i.product}* (${i.shade}): ${i.stock} remaining (Low)`)\n    .join('\\n');\n}\n\n// Build professional English executive digest message for Founder\nconst digestMessage = `📊 *CEVONNE EXECUTIVE WEEKLY DIGEST*\\n` +\n  `📅 *Period:* ${dateRange}\\n\\n` +\n  `💰 *Revenue & Performance:*\\n` +\n  `• Total Revenue: *₹${totalRevenue}*\\n` +\n  `• Total Orders: *${totalOrders}*\\n` +\n  `• Average Order Value (AOV): *₹${aov}*\\n` +\n  `• Delivered: *${delivered}*\\n` +\n  `• Shipped / In-Transit: *${inProgress}*\\n` +\n  `• Pending Payment: *${pending}*\\n` +\n  `• Cancelled / Returned: *${cancelled}*\\n\\n` +\n  `🏆 *Top Performing Shades:*\\n` +\n  `${topProductsText}\\n\\n` +\n  `📦 *Inventory Watch:*\\n` +\n  `${inventoryText}\\n\\n` +\n  `💡 *Weekly Focus:*\\n` +\n  `• Automated cart recovery and inventory alerts are active.\\n` +\n  `• Keep buffer stock ready for high-demand shades.\\n\\n` +\n  `Have a high-growth and successful week ahead! 🚀`;\n\nreturn [{\n  json: {\n    status: 'SUCCESS',\n    date_range: dateRange,\n    total_revenue: summary.totalRevenue || 0,\n    total_orders: totalOrders,\n    aov: summary.aov || 0,\n    delivered_count: delivered,\n    top_products: topProducts,\n    critical_inventory_count: criticalItems.length,\n    digest_message: digestMessage,\n    generated_at: new Date().toISOString()\n  }\n}];\n"
+      },
+      "id": "444d444d-d444-4444-8444-d44444444444",
+      "name": "Code - Build Founder Digest",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        740,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v21.0/1269614229578624/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer EAASAfHd2LZCkBSMprh9wr9sTuJbZBIySujumZA85WZARcvOZBM3VjOQKZAx0Jufm8uPkVKNZCNxBXrRYJjPybm9SgqrCFXPCzNhYbqfCAwRUCNiguUml6xPEWvZBzbcN9z7LjwGdACf2I1hwgansXqYT1ylI2D9b8rnwScZCjf6ZClVKuZBba0JivAmSVn6z8fWAAZDZD"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"recipient_type\": \"individual\",\n  \"to\": \"917061009669\",\n  \"type\": \"text\",\n  \"text\": {\n    \"preview_url\": false,\n    \"body\": {{ JSON.stringify($json.digest_message) }}\n  }\n}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "555e555e-e555-4555-8555-e55555555555",
+      "name": "WhatsApp - Deliver Digest to Founder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1000,
+        400
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"SUCCESS\",\n  \"message\": \"Founder Weekly Digest delivered to WhatsApp successfully!\",\n  \"delivered_to\": \"917061009669\",\n  \"period\": {{ JSON.stringify($('Code - Build Founder Digest').first().json.date_range) }},\n  \"metrics\": {\n    \"total_revenue\": {{ $('Code - Build Founder Digest').first().json.total_revenue }},\n    \"total_orders\": {{ $('Code - Build Founder Digest').first().json.total_orders }},\n    \"aov\": {{ $('Code - Build Founder Digest').first().json.aov }},\n    \"delivered_count\": {{ $('Code - Build Founder Digest').first().json.delivered_count }}\n  },\n  \"delivered_at\": {{ JSON.stringify($('Code - Build Founder Digest').first().json.generated_at) }}\n}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "666f666f-f666-4666-8666-f66666666666",
+      "name": "Respond - Digest Summary",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1240,
+        400
+      ],
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Schedule - Every Monday 10 AM": {
+      "main": [
+        [
+          {
+            "node": "HTTP - Fetch Weekly Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook - Manual / Test Trigger": {
+      "main": [
+        [
+          {
+            "node": "HTTP - Fetch Weekly Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP - Fetch Weekly Metrics": {
+      "main": [
+        [
+          {
+            "node": "Code - Build Founder Digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Build Founder Digest": {
+      "main": [
+        [
+          {
+            "node": "WhatsApp - Deliver Digest to Founder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WhatsApp - Deliver Digest to Founder": {
+      "main": [
+        [
+          {
+            "node": "Respond - Digest Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

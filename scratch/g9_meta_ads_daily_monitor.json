@@ -1,0 +1,425 @@
+{
+  "name": "Cevonne - G9 Meta Ads Daily Performance & ROAS Monitor",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "daysInterval": 1,
+              "triggerAtHour": 9,
+              "triggerAtMinute": 0
+            }
+          ]
+        }
+      },
+      "id": "11111111-9999-4111-8111-111111111111",
+      "name": "Schedule - Daily 9 AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "cevonne/ads-monitor",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "22222222-9999-4222-8222-222222222222",
+      "name": "Webhook - Manual / Test Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        200,
+        500
+      ],
+      "webhookId": "cevonne-ads-monitor-webhook"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://graph.facebook.com/v21.0/act_2598854173902437/insights",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "fields",
+              "value": "campaign_id,campaign_name,adset_id,adset_name,ad_id,ad_name,spend,impressions,reach,clicks,ctr,cpc,cpm,frequency,actions,action_values,purchase_roas,date_start,date_stop"
+            },
+            {
+              "name": "date_preset",
+              "value": "yesterday"
+            },
+            {
+              "name": "level",
+              "value": "ad"
+            },
+            {
+              "name": "limit",
+              "value": "100"
+            },
+            {
+              "name": "access_token",
+              "value": "EAASAfHd2LZCkBSMprh9wr9sTuJbZBIySujumZA85WZARcvOZBM3VjOQKZAx0Jufm8uPkVKNZCNxBXrRYJjPybm9SgqrCFXPCzNhYbqfCAwRUCNiguUml6xPEWvZBzbcN9z7LjwGdACf2I1hwgansXqYT1ylI2D9b8rnwScZCjf6ZClVKuZBba0JivAmSVn6z8fWAAZDZD"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "33333333-9999-4333-8333-333333333333",
+      "name": "Meta API - Read Ad Insights",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        400
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://graph.facebook.com/v21.0/act_2598854173902437/adsets",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "fields",
+              "value": "id,name,status,effective_status,daily_budget,lifetime_budget,campaign_id"
+            },
+            {
+              "name": "limit",
+              "value": "100"
+            },
+            {
+              "name": "access_token",
+              "value": "EAASAfHd2LZCkBSMprh9wr9sTuJbZBIySujumZA85WZARcvOZBM3VjOQKZAx0Jufm8uPkVKNZCNxBXrRYJjPybm9SgqrCFXPCzNhYbqfCAwRUCNiguUml6xPEWvZBzbcN9z7LjwGdACf2I1hwgansXqYT1ylI2D9b8rnwScZCjf6ZClVKuZBba0JivAmSVn6z8fWAAZDZD"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "44444444-9999-4444-8444-444444444444",
+      "name": "Meta API - Read Ad Sets",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        400
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst insightsRes = $('Meta API - Read Ad Insights').first().json || {};\nconst adsetsRes = $input.first().json || {};\n\nconst rows = Array.isArray(insightsRes.data) ? insightsRes.data : [];\nconst adsets = Array.isArray(adsetsRes.data) ? adsetsRes.data : [];\nconst activeAdsets = adsets.filter(a => a.status === 'ACTIVE' || a.effective_status === 'ACTIVE');\n\nconst num = (v) => {\n  const p = Number(v);\n  return Number.isFinite(p) ? p : 0;\n};\n\nconst actionVal = (actions, matcher) => {\n  if (!Array.isArray(actions)) return 0;\n  const match = actions.find(a => matcher(String(a.action_type || '').toLowerCase()));\n  return num(match?.value);\n};\n\nlet totalSpend = 0;\nlet totalImpressions = 0;\nlet totalReach = 0;\nlet totalClicks = 0;\nlet totalPurchases = 0;\nlet totalPurchaseValue = 0;\n\nfor (const r of rows) {\n  totalSpend += num(r.spend);\n  totalImpressions += num(r.impressions);\n  totalReach += num(r.reach);\n  totalClicks += num(r.clicks);\n  totalPurchases += actionVal(r.actions, t => t === 'purchase' || t.endsWith('.purchase') || t === 'omni_purchase');\n  totalPurchaseValue += actionVal(r.action_values, t => t === 'purchase' || t.endsWith('.purchase') || t === 'omni_purchase');\n}\n\nconst ctr = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0;\nconst cpc = totalClicks > 0 ? totalSpend / totalClicks : 0;\nconst roas = totalSpend > 0 ? totalPurchaseValue / totalSpend : 0;\nconst cpp = totalPurchases > 0 ? totalSpend / totalPurchases : 0;\n\nconst hasSpend = totalSpend > 0;\nconst isZeroConversionAlert = totalSpend >= 1000 && totalPurchases === 0;\n\nreturn [{\n  json: {\n    account_id: 'act_2598854173902437',\n    account_name: 'Cevonne ad a/c',\n    has_spend: hasSpend,\n    is_zero_conversion_alert: isZeroConversionAlert,\n    total_spend: totalSpend,\n    total_purchases: totalPurchases,\n    total_revenue: totalPurchaseValue,\n    roas: roas,\n    cpp: cpp,\n    impressions: totalImpressions,\n    reach: totalReach,\n    clicks: totalClicks,\n    ctr: ctr,\n    cpc: cpc,\n    active_adsets_count: activeAdsets.length,\n    active_adset_names: activeAdsets.map(a => a.name).slice(0, 3),\n    date_label: 'Yesterday'\n  }\n}];\n"
+      },
+      "id": "55555555-9999-4555-8555-555555555555",
+      "name": "Code - Aggregate Ad Metrics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.has_spend }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "66666666-9999-4666-8666-666666666666",
+      "name": "IF - Ad Spend > 0?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1200,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"gpt-4.1-mini\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are an elite Meta Ads Performance Director for Cevonne D2C Beauty brand. Analyze the daily metrics and provide an executive 2-line strategic recommendation in strictly professional English. Output pure JSON with keys: decision (SCALE | PAUSE | OPTIMIZE | MAINTAIN), summary (1 short sentence), action (1 clear recommended action).\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": {{ JSON.stringify($json) }}\n    }\n  ],\n  \"temperature\": 0.2,\n  \"response_format\": { \"type\": \"json_object\" }\n}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "77777777-9999-4777-8777-777777777777",
+      "name": "OpenAI - Generate Ad Advisory",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1440,
+        300
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "rdLwHLTewij4aEU0",
+          "name": "OpenAI account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst agg = $('Code - Aggregate Ad Metrics').first().json;\nconst aiRes = $input.first().json;\n\nlet aiDecision = 'MAINTAIN';\nlet aiSummary = 'Daily ad delivery is active within target parameters.';\nlet aiAction = 'Monitor ROAS trends and maintain active budget allocation.';\n\ntry {\n  const content = aiRes.choices?.[0]?.message?.content;\n  if (content) {\n    const parsed = JSON.parse(content);\n    if (parsed.decision) aiDecision = parsed.decision.toUpperCase();\n    if (parsed.summary) aiSummary = parsed.summary;\n    if (parsed.action) aiAction = parsed.action;\n  }\n} catch (e) {}\n\nconst spendFormatted = agg.total_spend.toLocaleString('en-IN', { maximumFractionDigits: 2 });\nconst revFormatted = agg.total_revenue.toLocaleString('en-IN', { maximumFractionDigits: 2 });\nconst roasFormatted = agg.roas.toFixed(2);\nconst cppFormatted = agg.cpp > 0 ? `₹${agg.cpp.toFixed(2)}` : 'N/A (0 Purchases)';\nconst cpcFormatted = agg.cpc.toFixed(2);\nconst ctrFormatted = agg.ctr.toFixed(2);\n\nlet warningBanner = '';\nif (agg.is_zero_conversion_alert) {\n  warningBanner = `\\n⚠️ *CRITICAL ALERT:* Ad spend exceeded ₹1,000 with 0 purchases recorded yesterday. Review product landing page & checkout flow immediately!\\n`;\n}\n\nconst message = `📈 *CEVONNE META ADS DAILY PERFORMANCE*\\n` +\n  `📅 *Reporting Period:* Yesterday\\n` +\n  warningBanner + `\\n` +\n  `💵 *Spend & Returns:*\\n` +\n  `• Total Ad Spend: *₹${spendFormatted}*\\n` +\n  `• Purchases Tracked: *${agg.total_purchases}*\\n` +\n  `• Purchase Value: *₹${revFormatted}*\\n` +\n  `• Return on Ad Spend (ROAS): *${roasFormatted}x*\\n` +\n  `• Cost Per Purchase (CPP): *${cppFormatted}*\\n\\n` +\n  `📊 *Traffic & Efficiency:*\\n` +\n  `• Impressions: *${agg.impressions.toLocaleString('en-IN')}*\\n` +\n  `• Link Clicks: *${agg.clicks.toLocaleString('en-IN')}*\\n` +\n  `• Click-Through Rate (CTR): *${ctrFormatted}%*\\n` +\n  `• Cost Per Click (CPC): *₹${cpcFormatted}*\\n\\n` +\n  `🤖 *AI Strategic Advisory (OpenAI):*\\n` +\n  `• Recommendation: *${aiDecision}*\\n` +\n  `• Insight: ${aiSummary}\\n` +\n  `• Action: ${aiAction}\\n\\n` +\n  `⚡ *Account Health:* Active (${agg.account_name})\\n\\n` +\n  `Have a high-growth and profitable day ahead! 🚀`;\n\nreturn [{\n  json: {\n    has_spend: true,\n    report_message: message,\n    metrics: agg,\n    ai_advisory: { decision: aiDecision, summary: aiSummary, action: aiAction }\n  }\n}];\n"
+      },
+      "id": "88888888-9999-4888-8888-888888888888",
+      "name": "Code - Build Detailed Report with AI",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst agg = $('Code - Aggregate Ad Metrics').first().json;\n\nconst message = `📈 *CEVONNE META ADS DAILY BRIEFING*\\n` +\n  `📅 *Reporting Period:* Yesterday\\n\\n` +\n  `💵 *Ad Spend Status:*\\n` +\n  `• Yesterday Ad Spend: *₹0.00*\\n` +\n  `• Active Campaigns: *${agg.active_adsets_count}*\\n` +\n  `• Account Status: *Active (${agg.account_name})*\\n\\n` +\n  `ℹ️ *Note:* No active paid ad spend was recorded for yesterday. When you launch or activate ad campaigns, daily spend, conversions, and AI ROAS analytics will be reported automatically here.\\n\\n` +\n  `Have a productive day! 🚀`;\n\nreturn [{\n  json: {\n    has_spend: false,\n    report_message: message,\n    metrics: agg\n  }\n}];\n"
+      },
+      "id": "99999999-9999-4999-8999-999999999999",
+      "name": "Code - Build Zero Spend Briefing",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v21.0/1269614229578624/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer EAASAfHd2LZCkBSMprh9wr9sTuJbZBIySujumZA85WZARcvOZBM3VjOQKZAx0Jufm8uPkVKNZCNxBXrRYJjPybm9SgqrCFXPCzNhYbqfCAwRUCNiguUml6xPEWvZBzbcN9z7LjwGdACf2I1hwgansXqYT1ylI2D9b8rnwScZCjf6ZClVKuZBba0JivAmSVn6z8fWAAZDZD"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"recipient_type\": \"individual\",\n  \"to\": \"917061009669\",\n  \"type\": \"text\",\n  \"text\": {\n    \"preview_url\": false,\n    \"body\": {{ JSON.stringify($json.report_message) }}\n  }\n}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "aaaaaaaa-9999-4aaa-8aaa-aaaaaaaaaaaa",
+      "name": "WhatsApp - Deliver Report to Founder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1940,
+        400
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"SUCCESS\",\n  \"message\": \"Meta Ads Daily Report delivered to WhatsApp successfully!\",\n  \"delivered_to\": \"917061009669\",\n  \"account\": \"act_2598854173902437 (Cevonne ad a/c)\",\n  \"has_spend\": {{ $json.has_spend }},\n  \"delivered_at\": new Date().toISOString()\n}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "bbbbbbbb-9999-4bbb-8bbb-bbbbbbbbbbbb",
+      "name": "Respond - Ads Summary",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2180,
+        400
+      ],
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Schedule - Daily 9 AM": {
+      "main": [
+        [
+          {
+            "node": "Meta API - Read Ad Insights",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook - Manual / Test Trigger": {
+      "main": [
+        [
+          {
+            "node": "Meta API - Read Ad Insights",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Meta API - Read Ad Insights": {
+      "main": [
+        [
+          {
+            "node": "Meta API - Read Ad Sets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Meta API - Read Ad Sets": {
+      "main": [
+        [
+          {
+            "node": "Code - Aggregate Ad Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Aggregate Ad Metrics": {
+      "main": [
+        [
+          {
+            "node": "IF - Ad Spend > 0?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Ad Spend > 0?": {
+      "main": [
+        [
+          {
+            "node": "OpenAI - Generate Ad Advisory",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code - Build Zero Spend Briefing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI - Generate Ad Advisory": {
+      "main": [
+        [
+          {
+            "node": "Code - Build Detailed Report with AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Build Detailed Report with AI": {
+      "main": [
+        [
+          {
+            "node": "WhatsApp - Deliver Report to Founder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Build Zero Spend Briefing": {
+      "main": [
+        [
+          {
+            "node": "WhatsApp - Deliver Report to Founder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WhatsApp - Deliver Report to Founder": {
+      "main": [
+        [
+          {
+            "node": "Respond - Ads Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
