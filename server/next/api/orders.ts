@@ -32,6 +32,12 @@ export const dispatchOrdersRoute = async (request: Request, segments: string[] =
     return runController(request, orderController.getMyOrders, { user: auth });
   }
 
+  if (first === "track-abandoned-cart" && request.method === "POST") {
+    const body = await readJsonBody(request);
+    if (body instanceof Response) return body;
+    return runController(request, orderController.trackAbandonedCart, { body });
+  }
+
   if (first === "record-opt-out" && request.method === "POST") {
     const body = await readJsonBody(request);
     if (body instanceof Response) return body;

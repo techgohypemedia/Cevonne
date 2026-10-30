@@ -839,6 +839,38 @@ exports.recordOptOut = async (req: any, res: any, next: any) => {
 };
 
 
+
+exports.trackAbandonedCart = async (req: any, res: any, next: any) => {
+  try {
+    const body = req.body || {};
+    const email = (body.email as string)?.trim().toLowerCase() || "";
+    const phone = (body.phone as string)?.trim() || "";
+    const customerName = (body.customerName as string)?.trim() || (body.fullName as string)?.trim() || "there";
+    const items = Array.isArray(body.items) ? body.items : [];
+
+    if (!email && !phone) {
+      return res.status(400).json({ status: "ERROR", message: "Email or phone is required to track abandoned cart." });
+    }
+
+    const { triggerAbandonedCartAlert } = await import("../services/customer-router.service");
+    await triggerAbandonedCartAlert({
+      email,
+      phone,
+      customerName,
+      items: items.map((i: any) => ({
+        name: i.name || i.title || "Lipstick",
+        shade: i.shadeName || i.shade || "Selected Shade",
+        quantity: Number(i.quantity) || 1,
+      })),
+    });
+
+    return res.status(200).json({ status: "SUCCESS", message: "Abandoned cart event dispatched to n8n router" });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+
 cjsModule.exports = {
   createOrder: exports.createOrder,
   getMyOrders: exports.getMyOrders,
@@ -849,6 +881,7 @@ cjsModule.exports = {
   checkCouponStatus: exports.checkCouponStatus,
   getWeeklyBusinessMetrics: exports.getWeeklyBusinessMetrics,
   recordOptOut: exports.recordOptOut,
+  trackAbandonedCart: exports.trackAbandonedCart,
 };
 
 export default cjsModule.exports;
