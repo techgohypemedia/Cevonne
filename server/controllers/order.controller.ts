@@ -587,7 +587,7 @@ exports.checkCouponStatus = async (req: any, res: any, next: any) => {
 
       const isActive = discount.status === "ACTIVE" && !isExpired && !notStarted && !limitReached;
 
-      let reason = null;
+      let reason: string | null = null;
       if (!isActive) {
         if (discount.status !== "ACTIVE") reason = `Coupon status is ${discount.status}`;
         else if (isExpired) reason = "Coupon has expired";
@@ -671,23 +671,21 @@ exports.checkCouponStatus = async (req: any, res: any, next: any) => {
 
 
 
-exports.getWeeklyBusinessMetrics = async (_req, res, next) => {
+exports.getWeeklyBusinessMetrics = async (_req: any, res: any, next: any) => {
   try {
     const prisma = await getPrisma();
     const now = new Date();
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-    // Format readable date range
-    const formatDate = (d) => d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+    const formatDate = (d: Date) => d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
     const dateRange = `${formatDate(sevenDaysAgo)} – ${formatDate(now)}`;
 
-    // Fetch orders in last 7 days
     const orders = await prisma.order.findMany({
       where: { createdAt: { gte: sevenDaysAgo } },
       orderBy: { createdAt: "desc" },
     });
 
-    const isNonCancelled = (s) => s !== "CANCELLED" && s !== "REJECTED";
+    const isNonCancelled = (s?: string | null) => s !== "CANCELLED" && s !== "REJECTED";
     const nonCancelledOrders = orders.filter((o) => isNonCancelled(o.status));
 
     const totalRevenue = nonCancelledOrders.reduce((sum, o) => sum + getOrderRevenue(o.totals), 0);
@@ -700,12 +698,12 @@ exports.getWeeklyBusinessMetrics = async (_req, res, next) => {
     const pendingCount = orders.filter((o) => o.status === OrderStatus.PENDING).length;
     const cancelledCount = orders.filter((o) => !isNonCancelled(o.status)).length;
 
-    // Tally top products/shades
-    const productTally = {};
+    const productTally: Record<string, { name: string; quantity: number; revenue: number }> = {};
     for (const o of nonCancelledOrders) {
-      const items = Array.isArray(o.items) ? o.items : [];
+      const items = Array.isArray(o.items) ? (o.items as any[]) : [];
       for (const item of items) {
-        const key = item.shadeName || item.shade || item.name || "Unknown Product";
+        if (!item) continue;
+        const key = String(item.shadeName || item.shade || item.name || "Unknown Product");
         const qty = Number(item.quantity) || 1;
         const price = Number(item.price) || 0;
         if (!productTally[key]) {
@@ -720,20 +718,30 @@ exports.getWeeklyBusinessMetrics = async (_req, res, next) => {
       .sort((a, b) => b.quantity - a.quantity)
       .slice(0, 3);
 
-    // Critical inventory items (stock <= 10)
-    let criticalItems = [];
+    let criticalItems: Array<{ product: string; shade: string; stock: number }> = [];
     try {
       const invRows = await prisma.inventory.findMany({
-        where: { stock: { lte: 10 } },
-        include: { product: true, shade: true },
+        where: { quantity: { lte: 10 } },
         take: 5,
-        orderBy: { stock: "asc" },
+        orderBy: { quantity: "asc" },
       });
-      criticalItems = invRows.map((row) => ({
-        product: row.product?.name || "Product",
-        shade: row.shade?.name || "Standard",
-        stock: row.stock,
-      }));
+
+      const shadeIds = invRows.map((r) => r.shadeId).filter(Boolean);
+      const shades = shadeIds.length > 0 ? await prisma.shade.findMany({
+        where: { id: { in: shadeIds } },
+        include: { product: true },
+      }) : [];
+
+      const shadeMap = new Map(shades.map((s) => [s.id, s]));
+
+      criticalItems = invRows.map((row) => {
+        const shade = shadeMap.get(row.shadeId);
+        return {
+          product: shade?.product?.name || "Lipstick",
+          shade: shade?.name || "Standard",
+          stock: row.quantity,
+        };
+      });
     } catch {
       criticalItems = [];
     }
