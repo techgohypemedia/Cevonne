@@ -32,6 +32,10 @@ export const dispatchOrdersRoute = async (request: Request, segments: string[] =
     return runController(request, orderController.getMyOrders, { user: auth });
   }
 
+  if (first === "weekly-metrics" && request.method === "GET") {
+    return runController(request, orderController.getWeeklyBusinessMetrics);
+  }
+
   if ((first === "check-coupon" || first === "check-coupons") && request.method === "GET") {
     return runController(request, orderController.checkCouponStatus);
   }
