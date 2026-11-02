@@ -31,3 +31,6 @@ uploads/
 *.sln
 *.sw?
 *.tsbuildinfo
+
+# Scratch temporary workflows and scripts
+scratch/
