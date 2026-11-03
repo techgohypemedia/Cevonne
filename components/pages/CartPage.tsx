@@ -160,11 +160,15 @@ export default function CartPage() {
                                     <Plus className="h-3.5 w-3.5" />
                                   </button>
                                 </div>
-                                {isMaxStock && (
+                                {maxStock === 0 ? (
+                                  <span className="text-[11px] text-rose-600 font-medium">
+                                    Out of stock
+                                  </span>
+                                ) : isMaxStock ? (
                                   <span className="text-[11px] text-amber-700 font-medium">
                                     Max stock reached ({maxStock})
                                   </span>
-                                )}
+                                ) : null}
                               </div>
                             );
                           })()}

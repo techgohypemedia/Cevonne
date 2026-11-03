@@ -9,7 +9,7 @@ import CevonneAttributionTracker from "@/components/CevonneAttributionTracker";
 import FloatingVideoWidget from "@/components/media/FloatingVideoWidget";
 import { useLocation } from "@/lib/router";
 
-const HIDE_FOOTER_PATHS = new Set(["/cart", "/checkout"]);
+const HIDE_FOOTER_PATHS = new Set(["/cart", "/checkout", "/login", "/signup", "/forgot-password"]);
 const ACCOUNT_PATHS = new Set(["/login", "/signup", "/forgot-password"]);
 
 export default function SiteShell({ children }) {
@@ -20,12 +20,12 @@ export default function SiteShell({ children }) {
   return (
     <main className="min-h-screen bg-background text-foreground">
       <CevonneAttributionTracker />
-      {!isAccountRoute && <Navbar />}
-      {!isAccountRoute && <MobileTopBar />}
+      <Navbar />
+      <MobileTopBar />
       {children}
-      {!isAccountRoute && <ShopDrawer />}
-      {!shouldHideFooter && !isAccountRoute && <Footer />}
-      {!isAccountRoute && <MobileBottomNav />}
+      <ShopDrawer />
+      {!shouldHideFooter && <Footer />}
+      <MobileBottomNav />
       {!isAccountRoute && <FloatingVideoWidget />}
     </main>
   );

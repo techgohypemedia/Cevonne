@@ -376,7 +376,73 @@ exports.updateProfile = async (req, res, next) => {
   }
 };
 
+exports.googleAuth = async (req: any, res: any, next: any) => {
+  try {
+    const { credential, accessToken } = req.body || {};
+
+    let email: string | null = null;
+    let name: string | null = null;
+
+    if (credential) {
+      // 1. Verify Google JWT ID Token via Google tokeninfo endpoint
+      const verifyRes = await fetch(
+        `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`
+      );
+      if (!verifyRes.ok) {
+        return res.status(401).json({ message: "Invalid or expired Google credential" });
+      }
+      const payload = await verifyRes.json();
+      email = payload.email ? String(payload.email).trim().toLowerCase() : null;
+      name = payload.name ? String(payload.name).trim() : null;
+    } else if (accessToken) {
+      // 2. Verify Google Access Token via Google userinfo endpoint
+      const userinfoRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!userinfoRes.ok) {
+        return res.status(401).json({ message: "Invalid or expired Google access token" });
+      }
+      const payload = await userinfoRes.json();
+      email = payload.email ? String(payload.email).trim().toLowerCase() : null;
+      name = payload.name ? String(payload.name).trim() : null;
+    } else {
+      return res.status(400).json({ message: "Google credential or accessToken is required." });
+    }
+
+    if (!email) {
+      return res.status(400).json({ message: "Unable to retrieve verified email from Google." });
+    }
+
+    const prisma = await getPrisma();
+    let user = await prisma.user.findUnique({ where: { email } });
+
+    if (!user) {
+      // Create new customer account seamlessly without password
+      user = await prisma.user.create({
+        data: {
+          email,
+          name: name || email.split("@")[0],
+          role: "CUSTOMER",
+        },
+      });
+    } else if (!user.name && name) {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { name },
+      });
+    }
+
+    return res.status(200).json({
+      message: "Google sign-in successful.",
+      ...buildAuthResponse(user),
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 cjsModule.exports = {
+  googleAuth: exports.googleAuth,
   signup: exports.signup,
   signin: exports.signin,
   verifyOTP: exports.verifyOTP,

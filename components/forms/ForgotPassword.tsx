@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { toast } from "sonner";
+import { ArrowLeft } from "lucide-react";
 
 import { Link } from "@/lib/router";
 import { API_BASE } from "@/lib/api";
@@ -15,7 +16,7 @@ export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = async (event) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!email.trim()) {
       toast.error("Enter your email address.");
@@ -35,8 +36,8 @@ export default function ForgotPassword() {
         throw new Error(payload?.message || "Unable to request a password reset.");
       }
 
-      toast.success(payload?.message || "Password reset link sent.");
-    } catch (error) {
+      toast.success(payload?.message || "Password reset link sent to your email.");
+    } catch (error: any) {
       toast.error(error?.message || "Unable to request a password reset.");
     } finally {
       setIsLoading(false);
@@ -44,8 +45,8 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="auth-page min-h-[100dvh] bg-[#fffefd] text-[#181614] lg:grid lg:grid-cols-2">
-      <aside className="relative hidden min-h-[100dvh] overflow-hidden bg-[#bc8d68] lg:block">
+    <div className="auth-page min-h-[calc(100dvh-4rem)] md:min-h-[calc(100dvh-5rem)] pt-16 md:pt-20 bg-[#faf8f5] text-[#181614] lg:grid lg:grid-cols-2">
+      <aside className="relative hidden lg:block overflow-hidden bg-[#bc8d68] min-h-[calc(100dvh-5rem)]">
         <Image
           src={FORGOT_PASSWORD_CAMPAIGN_IMAGE}
           alt="Cevonne beauty collection"
@@ -54,23 +55,46 @@ export default function ForgotPassword() {
           sizes="(min-width: 1024px) 50vw, 100vw"
           className="object-cover object-center"
         />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-black/10" />
+        <div className="absolute bottom-10 left-10 right-10 text-white space-y-2">
+          <span className="inline-block text-[11px] font-semibold tracking-[0.25em] uppercase text-rose-200">
+            Account Recovery
+          </span>
+          <h2 className="font-serif text-3xl font-light tracking-wide text-white drop-shadow-sm">
+            We will help you regain access.
+          </h2>
+          <p className="text-xs text-white/80 max-w-sm tracking-wide leading-relaxed">
+            Enter your registered email and we will send you secure reset instructions.
+          </p>
+        </div>
       </aside>
 
-      <div className="flex min-h-[100dvh] items-center justify-center px-5 py-12 sm:px-10 lg:px-16 xl:px-24">
-        <div className="w-full max-w-[34rem]">
-          <header>
-            <h1 className="font-sans text-xl font-medium tracking-[-0.035em] sm:text-[1.35rem]">
-              Forgot password
+      <div className="flex min-h-[calc(100dvh-4rem)] md:min-h-[calc(100dvh-5rem)] items-center justify-center px-6 py-12 sm:px-12 lg:px-16 xl:px-20">
+        <div className="w-full max-w-[420px] mx-auto">
+          <Link
+            href="/login"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-neutral-500 hover:text-neutral-900 transition mb-6"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Back to Sign In
+          </Link>
+
+          <header className="mb-8">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#9c897f] block mb-2">
+              Forgot Password
+            </span>
+            <h1 className="font-serif text-3xl sm:text-4xl font-normal tracking-tight text-neutral-900">
+              Reset Password
             </h1>
-            <p className="mt-2 max-w-md text-sm leading-6 text-[#6b645e]">
-              Enter your email address and we&apos;ll send you a link to reset your password.
+            <p className="mt-2 text-sm text-neutral-500 leading-relaxed">
+              Enter your email address to receive password reset instructions.
             </p>
           </header>
 
-          <form onSubmit={handleSubmit} className="mt-10 space-y-5 sm:mt-12">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="email" className="text-xs font-medium tracking-[0.01em]">
-                Email address<span aria-hidden="true">*</span>
+              <label htmlFor="email" className="block text-xs font-medium tracking-wide text-neutral-700 mb-1.5">
+                Email address <span className="text-rose-500">*</span>
               </label>
               <Input
                 id="email"
@@ -78,31 +102,30 @@ export default function ForgotPassword() {
                 autoComplete="email"
                 placeholder="name@example.com"
                 value={email}
-                onChange={(event) => setEmail(event.target.value)}
+                onChange={(e) => setEmail(e.target.value)}
                 disabled={isLoading}
                 required
-                className="mt-2.5 h-12 !rounded-[0.3rem] border-[#8b8580] bg-white px-4 text-sm text-[#181614] shadow-none placeholder:text-[#a6a09a] focus-visible:border-[#181614] focus-visible:ring-1 focus-visible:ring-[#181614]"
+                className="h-12 rounded-xl border-neutral-300 bg-white px-4 text-sm text-neutral-900 placeholder:text-neutral-400 focus-visible:border-neutral-900 focus-visible:ring-1 focus-visible:ring-neutral-900 transition-shadow"
               />
             </div>
 
             <button
               type="submit"
               disabled={isLoading}
-              className="flex h-12 w-full items-center justify-center bg-black px-6 text-sm font-semibold text-white !rounded-full transition-[background-color,transform] hover:bg-[#2c2927] active:scale-[0.99] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-2 flex h-12 w-full items-center justify-center rounded-full bg-neutral-900 px-6 text-sm font-medium tracking-wide text-white transition hover:bg-neutral-800 active:scale-[0.99] disabled:opacity-60 shadow-xs"
             >
-              {isLoading ? "Sending…" : "Send reset link"}
+              {isLoading ? "Sending link…" : "Send Reset Link"}
             </button>
 
-            <p className="text-center text-sm text-[#514b46]">
-              Remembered your password?{" "}
+            <p className="pt-4 text-center text-sm text-neutral-600">
+              Remember your password?{" "}
               <Link
                 href="/login"
-                className="font-medium text-[#181614] underline-offset-4 transition-colors hover:text-[#685154] hover:underline focus-visible:underline"
+                className="font-semibold text-neutral-900 underline underline-offset-4 hover:text-rose-700 transition"
               >
-                Back to login
+                Sign in
               </Link>
             </p>
-
           </form>
         </div>
       </div>

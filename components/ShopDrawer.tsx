@@ -275,11 +275,15 @@ export default function ShopDrawer() {
                                     <Plus className="h-3 w-3" />
                                   </button>
                                 </div>
-                                {isMaxStock && (
+                                {maxStock === 0 ? (
+                                  <span className="text-[10px] text-rose-600 font-medium">
+                                    Out of stock
+                                  </span>
+                                ) : isMaxStock ? (
                                   <span className="text-[10px] text-amber-700 font-medium">
                                     Max in stock ({maxStock})
                                   </span>
-                                )}
+                                ) : null}
                               </div>
 
                               <span className="font-semibold text-sm text-neutral-900">

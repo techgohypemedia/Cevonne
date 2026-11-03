@@ -1,18 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
-import { Eye, EyeOff } from "lucide-react";
+import { Link, useNavigate } from "@/lib/router";
 import axios from "axios";
 import { toast } from "sonner";
+import { Eye, EyeOff } from "lucide-react";
 
-import { Link, useLocation, useNavigate } from "@/lib/router";
 import { cn } from "@/lib/utils";
 import { API_BASE } from "@/lib/api";
-import { resolvePostAuthPath } from "@/lib/auth";
 import { useAuth } from "@/context/AuthContext";
-
 import { Input } from "@/components/ui/input";
+import { loadGoogleScript, triggerGoogleSignIn } from "@/lib/googleAuth";
 
 const api = axios.create({
   baseURL: API_BASE,
@@ -21,9 +20,9 @@ const api = axios.create({
 });
 
 const SIGNUP_CAMPAIGN_IMAGE =
-  "https://cdn.cevonne.com/assets/images/ChatGPT%20Image%20Aug%2010%2C%202026%2C%2012_01_06%20PM.png";
+  "https://cdn.cevonne.com/assets/images/ChatGPT%20Image%20Aug%2010%2C%202026%2C%2012_05_13%20PM.png";
 
-export default function SignupForm({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+export default function Signup({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -35,48 +34,46 @@ export default function SignupForm({ className, ...props }: React.HTMLAttributes
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const navigate = useNavigate();
-  const location = useLocation();
   const { login } = useAuth();
-  const searchParams = new URLSearchParams(location.search || "");
-  const redirectTo = searchParams.get("redirect") || "";
 
-  const handleChange = (event) => {
-    const { id, value } = event.target;
-    setFormData((current) => ({ ...current, [id]: value }));
+  useEffect(() => {
+    void loadGoogleScript();
+  }, []);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { id, value } = e.target;
+    setFormData((prev) => ({ ...prev, [id]: value }));
   };
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.name || !formData.email || !formData.password) {
+      toast.error("Please fill in all required fields.");
+      return;
+    }
     if (formData.password !== formData.confirmPassword) {
       toast.error("Passwords do not match.");
       return;
     }
 
-    const { confirmPassword: _confirmPassword, ...signupData } = formData;
     setIsLoading(true);
-
     try {
-      const { data } = await api.post("/users/signup", signupData);
+      const { data } = await api.post("/users/signup", {
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+      });
 
       if (data?.otpRequired) {
-        const params = new URLSearchParams();
-        params.set("email", formData.email);
-        if (redirectTo) params.set("redirect", redirectTo);
-        navigate(`/verify-otp?${params.toString()}`);
+        navigate(`/verify-otp?email=${encodeURIComponent(formData.email)}`);
         toast.success(data?.message || "OTP sent to your email.");
         return;
       }
 
       toast.success("Account created successfully!");
       login?.(data.user, data.token);
-      navigate(
-        resolvePostAuthPath({
-          role: data?.user?.role,
-          redirectTo,
-        })
-      );
-    } catch (error) {
-      console.error("Signup error:", error);
+      navigate("/account");
+    } catch (error: any) {
       const message =
         error.response?.data?.message || error.message || "Signup failed. Please try again.";
       toast.error(message);
@@ -85,51 +82,94 @@ export default function SignupForm({ className, ...props }: React.HTMLAttributes
     }
   };
 
+  const handleGoogleSignUp = async () => {
+    setIsLoading(true);
+    await triggerGoogleSignIn(
+      async ({ accessToken, credential }) => {
+        try {
+          const { data } = await api.post("/users/google", { accessToken, credential });
+          toast.success(data?.message || "Account connected with Google!");
+          login?.(data.user, data.token);
+          navigate("/account");
+        } catch (err: any) {
+          const message =
+            err.response?.data?.message ||
+            err.message ||
+            "Google sign-up failed. Please try again.";
+          toast.error(message);
+        } finally {
+          setIsLoading(false);
+        }
+      },
+      (error) => {
+        setIsLoading(false);
+        toast.error(error);
+      }
+    );
+  };
+
   return (
-    <div className="auth-page min-h-[100dvh] bg-[#fffefd] text-[#181614] lg:grid lg:grid-cols-2">
-      <aside className="relative hidden min-h-[100dvh] overflow-hidden bg-[#b9885b] lg:block">
+    <div className="auth-page min-h-[calc(100dvh-4rem)] md:min-h-[calc(100dvh-5rem)] pt-16 md:pt-20 bg-[#faf8f5] text-[#181614] lg:grid lg:grid-cols-2">
+      {/* Left side: Editorial Brand Campaign Image */}
+      <aside className="relative hidden lg:block overflow-hidden bg-[#b9885b] min-h-[calc(100dvh-5rem)]">
         <Image
           src={SIGNUP_CAMPAIGN_IMAGE}
-          alt="Cevonne lipstick and perfume collection on a vanity"
+          alt="Cevonne beauty and perfume collection"
           fill
           priority
           sizes="(min-width: 1024px) 50vw, 100vw"
           className="object-cover object-center"
         />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-black/10" />
+        <div className="absolute bottom-10 left-10 right-10 text-white space-y-2">
+          <span className="inline-block text-[11px] font-semibold tracking-[0.25em] uppercase text-rose-200">
+            Cevonne Privé
+          </span>
+          <h2 className="font-serif text-3xl font-light tracking-wide text-white drop-shadow-sm">
+            Step into timeless beauty.
+          </h2>
+          <p className="text-xs text-white/80 max-w-sm tracking-wide leading-relaxed">
+            Create an account to track orders, save bespoke shades, and receive exclusive VIP launches.
+          </p>
+        </div>
       </aside>
 
-      <div className="flex min-h-[100dvh] items-center justify-center px-5 py-10 sm:px-10 lg:px-16 xl:px-24">
-        <div className={cn("w-full max-w-[34rem]", className)} {...props}>
-          <header>
-            <h1 className="font-sans text-xl font-medium tracking-[-0.035em] sm:text-[1.35rem]">
-              Create your account
+      {/* Right side: Focused Form Container */}
+      <div className="flex min-h-[calc(100dvh-4rem)] md:min-h-[calc(100dvh-5rem)] items-center justify-center px-6 py-10 sm:px-12 lg:px-16 xl:px-20">
+        <div className={cn("w-full max-w-[420px] mx-auto", className)} {...props}>
+          <header className="mb-7">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#9c897f] block mb-2">
+              Join Cevonne
+            </span>
+            <h1 className="font-serif text-3xl sm:text-4xl font-normal tracking-tight text-neutral-900">
+              Create Account
             </h1>
-            <p className="mt-2 max-w-md text-sm leading-6 text-[#6b645e]">
+            <p className="mt-2 text-sm text-neutral-500 leading-relaxed">
               Join Cevonne to save favourites, track orders, and check out faster.
             </p>
           </header>
 
-          <form onSubmit={handleSubmit} className="mt-9 space-y-4 sm:mt-10">
+          <form onSubmit={handleSubmit} className="space-y-3.5">
             <div>
-              <label htmlFor="name" className="text-xs font-medium tracking-[0.01em]">
-                Full name<span aria-hidden="true">*</span>
+              <label htmlFor="name" className="block text-xs font-medium tracking-wide text-neutral-700 mb-1.5">
+                Full name <span className="text-rose-500">*</span>
               </label>
               <Input
                 id="name"
                 type="text"
                 autoComplete="name"
-                placeholder="Your full name"
+                placeholder="Priya Kapoor"
                 value={formData.name}
                 onChange={handleChange}
                 disabled={isLoading}
                 required
-                className="mt-2.5 h-12 !rounded-[0.3rem] border-[#8b8580] bg-white px-4 text-sm text-[#181614] shadow-none placeholder:text-[#a6a09a] focus-visible:border-[#181614] focus-visible:ring-1 focus-visible:ring-[#181614]"
+                className="h-12 rounded-xl border-neutral-300 bg-white px-4 text-sm text-neutral-900 placeholder:text-neutral-400 focus-visible:border-neutral-900 focus-visible:ring-1 focus-visible:ring-neutral-900 transition-shadow"
               />
             </div>
 
             <div>
-              <label htmlFor="email" className="text-xs font-medium tracking-[0.01em]">
-                Email address<span aria-hidden="true">*</span>
+              <label htmlFor="email" className="block text-xs font-medium tracking-wide text-neutral-700 mb-1.5">
+                Email address <span className="text-rose-500">*</span>
               </label>
               <Input
                 id="email"
@@ -140,15 +180,15 @@ export default function SignupForm({ className, ...props }: React.HTMLAttributes
                 onChange={handleChange}
                 disabled={isLoading}
                 required
-                className="mt-2.5 h-12 !rounded-[0.3rem] border-[#8b8580] bg-white px-4 text-sm text-[#181614] shadow-none placeholder:text-[#a6a09a] focus-visible:border-[#181614] focus-visible:ring-1 focus-visible:ring-[#181614]"
+                className="h-12 rounded-xl border-neutral-300 bg-white px-4 text-sm text-neutral-900 placeholder:text-neutral-400 focus-visible:border-neutral-900 focus-visible:ring-1 focus-visible:ring-neutral-900 transition-shadow"
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="text-xs font-medium tracking-[0.01em]">
-                Password<span aria-hidden="true">*</span>
+              <label htmlFor="password" className="block text-xs font-medium tracking-wide text-neutral-700 mb-1.5">
+                Password <span className="text-rose-500">*</span>
               </label>
-              <div className="relative mt-2.5">
+              <div className="relative">
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
@@ -158,14 +198,13 @@ export default function SignupForm({ className, ...props }: React.HTMLAttributes
                   onChange={handleChange}
                   disabled={isLoading}
                   required
-                  className="h-12 !rounded-[0.3rem] border-[#8b8580] bg-white px-4 pr-12 text-sm text-[#181614] shadow-none placeholder:text-[#a6a09a] focus-visible:border-[#181614] focus-visible:ring-1 focus-visible:ring-[#181614]"
+                  className="h-12 rounded-xl border-neutral-300 bg-white px-4 pr-12 text-sm text-neutral-900 placeholder:text-neutral-400 focus-visible:border-neutral-900 focus-visible:ring-1 focus-visible:ring-neutral-900 transition-shadow"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((value) => !value)}
-                  className="absolute right-3 top-1/2 z-10 flex size-8 -translate-y-1/2 items-center justify-center !rounded-full text-[#514b46] transition-colors hover:bg-[#f5f1ec] hover:text-[#181614] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-black"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full text-neutral-400 hover:text-neutral-800 transition"
                   aria-label={showPassword ? "Hide password" : "Show password"}
-                  aria-pressed={showPassword}
                 >
                   {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                 </button>
@@ -173,10 +212,10 @@ export default function SignupForm({ className, ...props }: React.HTMLAttributes
             </div>
 
             <div>
-              <label htmlFor="confirmPassword" className="text-xs font-medium tracking-[0.01em]">
-                Confirm password<span aria-hidden="true">*</span>
+              <label htmlFor="confirmPassword" className="block text-xs font-medium tracking-wide text-neutral-700 mb-1.5">
+                Confirm password <span className="text-rose-500">*</span>
               </label>
-              <div className="relative mt-2.5">
+              <div className="relative">
                 <Input
                   id="confirmPassword"
                   type={showConfirmPassword ? "text" : "password"}
@@ -186,14 +225,13 @@ export default function SignupForm({ className, ...props }: React.HTMLAttributes
                   onChange={handleChange}
                   disabled={isLoading}
                   required
-                  className="h-12 !rounded-[0.3rem] border-[#8b8580] bg-white px-4 pr-12 text-sm text-[#181614] shadow-none placeholder:text-[#a6a09a] focus-visible:border-[#181614] focus-visible:ring-1 focus-visible:ring-[#181614]"
+                  className="h-12 rounded-xl border-neutral-300 bg-white px-4 pr-12 text-sm text-neutral-900 placeholder:text-neutral-400 focus-visible:border-neutral-900 focus-visible:ring-1 focus-visible:ring-neutral-900 transition-shadow"
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword((value) => !value)}
-                  className="absolute right-3 top-1/2 z-10 flex size-8 -translate-y-1/2 items-center justify-center !rounded-full text-[#514b46] transition-colors hover:bg-[#f5f1ec] hover:text-[#181614] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-black"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full text-neutral-400 hover:text-neutral-800 transition"
                   aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
-                  aria-pressed={showConfirmPassword}
                 >
                   {showConfirmPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                 </button>
@@ -203,57 +241,44 @@ export default function SignupForm({ className, ...props }: React.HTMLAttributes
             <button
               type="submit"
               disabled={isLoading}
-              className="mt-1 flex h-12 w-full items-center justify-center bg-black px-6 text-sm font-semibold text-white !rounded-full transition-[background-color,transform] hover:bg-[#2c2927] active:scale-[0.99] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-2 flex h-12 w-full items-center justify-center rounded-full bg-neutral-900 px-6 text-sm font-medium tracking-wide text-white transition hover:bg-neutral-800 active:scale-[0.99] disabled:opacity-60 shadow-xs"
             >
               {isLoading ? "Creating account…" : "Create Account"}
             </button>
 
-            <div className="pt-1">
-              <div className="mb-5 flex items-center gap-3" aria-hidden="true">
-                <span className="h-px flex-1 bg-[#ded8d2]" />
-                <span className="text-[0.6875rem] font-medium tracking-[0.08em] text-[#756d67]">
+            <div className="pt-1.5">
+              <div className="mb-3.5 flex items-center gap-3" aria-hidden="true">
+                <span className="h-px flex-1 bg-neutral-200" />
+                <span className="text-[11px] font-medium tracking-wider text-neutral-400 uppercase">
                   OR
                 </span>
-                <span className="h-px flex-1 bg-[#ded8d2]" />
+                <span className="h-px flex-1 bg-neutral-200" />
               </div>
               <button
                 type="button"
                 disabled={isLoading}
-                onClick={() => toast.info("Google sign-up is coming soon.")}
-                className="flex h-13 w-full items-center justify-center gap-3 border border-[#24201d] bg-transparent px-5 text-sm font-medium tracking-[-0.01em] !rounded-full transition-colors hover:bg-[#f7f3ef] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={handleGoogleSignUp}
+                className="flex h-12 w-full items-center justify-center gap-3 rounded-full border border-neutral-300 bg-white px-5 text-sm font-medium text-neutral-800 transition hover:bg-neutral-50 shadow-2xs disabled:opacity-50"
               >
                 <GoogleMark />
                 Sign up with Google
               </button>
             </div>
 
-            <div className="space-y-2 pt-1">
-              <p className="text-center text-xs leading-5 text-[#6b645e]">
-                By creating an account, you agree to our{" "}
-                <Link
-                  href="/terms"
-                  className="font-medium text-[#181614] underline decoration-[#514b46] underline-offset-4 transition-colors hover:text-[#685154]"
-                >
-                  Terms of Service
-                </Link>{" "}
-                and{" "}
-                <Link
-                  href="/privacy-policy"
-                  className="font-medium text-[#181614] underline decoration-[#514b46] underline-offset-4 transition-colors hover:text-[#685154]"
-                >
-                  Privacy Policy
-                </Link>
-                .
-              </p>
-
-              <p className="text-center text-sm text-[#514b46]">
+            <div className="space-y-2 pt-3 text-center">
+              <p className="text-sm text-neutral-600">
                 Already have an account?{" "}
                 <Link
                   href="/login"
-                  className="font-medium text-[#181614] underline decoration-[#514b46] underline-offset-4 transition-colors hover:text-[#685154]"
+                  className="font-semibold text-neutral-900 underline underline-offset-4 hover:text-rose-700 transition"
                 >
-                  Login
+                  Sign in
                 </Link>
+              </p>
+              <p className="text-xs text-neutral-400 leading-normal">
+                By creating an account, you agree to Cevonne&apos;s{" "}
+                <Link href="/terms" className="underline hover:text-neutral-700">Terms</Link> and{" "}
+                <Link href="/privacy-policy" className="underline hover:text-neutral-700">Privacy Policy</Link>.
               </p>
             </div>
           </form>

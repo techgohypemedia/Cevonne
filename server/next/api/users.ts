@@ -69,6 +69,12 @@ export const dispatchUsersRoute = async (request: Request, segments: string[] = 
     return runController(request, userController.signup, { body });
   }
 
+  if (first === "google" && request.method === "POST") {
+    const body = await readJsonBody(request);
+    if (body instanceof Response) return body;
+    return runController(request, userController.googleAuth, { body });
+  }
+
   if (first === "signin" && request.method === "POST") {
     const body = await readJsonBody(request);
     if (body instanceof Response) return body;

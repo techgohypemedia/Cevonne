@@ -24,6 +24,7 @@ const authRateLimit = (action) => async (req, res, next) => {
 
 router.post('/signup', authRateLimit("signup"), userController.signup);
 router.post('/signin', authRateLimit("signin"), userController.signin);
+router.post('/google', userController.googleAuth);
 router.post('/verify-otp', authRateLimit("verify-otp"), userController.verifyOTP);
 router.post('/forgot-password', authRateLimit("forgot-password"), userController.forgotPassword);
 

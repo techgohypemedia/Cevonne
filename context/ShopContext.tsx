@@ -108,10 +108,48 @@ export function ShopProvider({ children }: { children: ReactNode }) {
         let hasChanges = false;
         const updated = prev.map((item) => {
           const matched = records.find((rec: any) => {
-            if (item.shadeId && rec.shadeId === item.shadeId) return true;
-            if (item.sku && rec.shade?.sku && String(rec.shade.sku).trim().toLowerCase() === String(item.sku).trim().toLowerCase()) return true;
-            if (item.key && (item.key.includes(rec.shadeId) || (rec.shade?.sku && item.key.includes(rec.shade.sku)))) return true;
-            if (item.shadeName && rec.shade?.name && String(rec.shade.name).trim().toLowerCase() === String(item.shadeName).trim().toLowerCase()) return true;
+            // 1. Direct Shade ID match (highest priority, 100% exact)
+            if (item.shadeId && rec.shadeId && String(item.shadeId).trim() === String(rec.shadeId).trim()) {
+              return true;
+            }
+
+            // 2. Exact SKU match (must match exact string, not substring, and match product if known)
+            const itemSku = String(item.sku ?? "").trim().toLowerCase();
+            const recSku = String(rec.shade?.sku ?? "").trim().toLowerCase();
+            if (itemSku && recSku && itemSku === recSku) {
+              const recProdId = rec.shade?.productId || rec.shade?.product?.id;
+              const itemProdId = item.productId || item.id;
+              if (!itemProdId || !recProdId || itemProdId === recProdId) {
+                return true;
+              }
+            }
+
+            // 3. Product match + Shade name match (both product and shade name must match)
+            const recProdId = rec.shade?.productId || rec.shade?.product?.id;
+            const itemProdId = item.productId || item.id;
+            const recProdName = String(rec.shade?.product?.name ?? "").trim().toLowerCase();
+            const itemProdName = String((item.productName || item.name) ?? "").trim().toLowerCase();
+            const recProdSlug = String(rec.shade?.product?.slug ?? "").trim().toLowerCase();
+            const itemProdSlug = String(item.slug ?? "").trim().toLowerCase();
+
+            const isSameProduct = Boolean(
+              (itemProdId && recProdId && itemProdId === recProdId) ||
+              (itemProdSlug && recProdSlug && itemProdSlug === recProdSlug) ||
+              (itemProdName && recProdName && (itemProdName === recProdName || recProdName.includes(itemProdName) || itemProdName.includes(recProdName)))
+            );
+
+            const itemShadeName = String((item.shadeName || item.shade) ?? "").trim().toLowerCase();
+            const recShadeName = String(rec.shade?.name ?? "").trim().toLowerCase();
+
+            if (isSameProduct && itemShadeName && recShadeName && itemShadeName === recShadeName) {
+              return true;
+            }
+
+            // 4. Exact Key containing specific shade identifier safely (separated by hyphen or exact)
+            if (item.key && rec.shadeId && (item.key === rec.shadeId || item.key.endsWith(`-${rec.shadeId}`))) {
+              return true;
+            }
+
             return false;
           });
 
