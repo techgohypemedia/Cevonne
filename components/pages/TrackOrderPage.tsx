@@ -159,7 +159,7 @@ export default function TrackOrderPage() {
             </div>
             <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
               <Link
-                to="/collections"
+                to="/"
                 className="inline-flex items-center gap-2 rounded-full bg-[var(--primary,#4b0d4b)] px-6 py-3 text-xs font-bold uppercase tracking-wider text-white shadow-md hover:bg-[var(--primary-700,#3d0a45)] transition-all"
               >
                 <ShoppingBag className="h-4 w-4" /> Continue Shopping
@@ -563,7 +563,7 @@ export default function TrackOrderPage() {
                 Go to My Orders <ChevronRight className="h-3.5 w-3.5" />
               </Link>
               <Link
-                to="/collections"
+                to="/"
                 className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-neutral-900"
               >
                 Continue Shopping <ExternalLink className="h-3.5 w-3.5" />

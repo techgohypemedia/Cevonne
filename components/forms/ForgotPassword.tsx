@@ -11,8 +11,10 @@ import { Input } from "@/components/ui/input";
 
 const FORGOT_PASSWORD_CAMPAIGN_IMAGE =
   "https://cdn.cevonne.com/assets/images/ChatGPT%20Image%20Aug%2010%2C%202026%2C%2012_20_49%20PM.png";
+const FALLBACK_CAMPAIGN_IMAGE = "/assets/banners/the_campaign.jpg";
 
 export default function ForgotPassword() {
+  const [campaignImg, setCampaignImg] = useState(FORGOT_PASSWORD_CAMPAIGN_IMAGE);
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -48,12 +50,13 @@ export default function ForgotPassword() {
     <div className="auth-page min-h-[calc(100dvh-4rem)] md:min-h-[calc(100dvh-5rem)] pt-16 md:pt-20 bg-[#faf8f5] text-[#181614] lg:grid lg:grid-cols-2">
       <aside className="relative hidden lg:block overflow-hidden bg-[#bc8d68] min-h-[calc(100dvh-5rem)]">
         <Image
-          src={FORGOT_PASSWORD_CAMPAIGN_IMAGE}
+          src={campaignImg}
           alt="Cevonne beauty collection"
           fill
           priority
           sizes="(min-width: 1024px) 50vw, 100vw"
           className="object-cover object-center"
+          onError={() => setCampaignImg(FALLBACK_CAMPAIGN_IMAGE)}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-black/10" />
         <div className="absolute bottom-10 left-10 right-10 text-white space-y-2">

@@ -120,7 +120,7 @@ export default function Orders() {
               Once you place an order in checkout, it will be displayed here with real-time tracking.
             </p>
             <Link
-              to="/collections"
+              to="/"
               className="inline-flex items-center rounded-full bg-[var(--primary)] px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-white shadow hover:opacity-95"
             >
               Start Shopping

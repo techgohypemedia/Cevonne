@@ -39,6 +39,7 @@ const MobileTopBar = () => {
     // Helper to determine title based on path
     const getTitle = () => {
         const path = location.pathname
+        if (path.startsWith("/quiz") || path.startsWith("/shade-finder")) return "SHADE FINDER"
         if (path.startsWith("/search")) return "SHOP ALL"
         if (path.startsWith("/cart")) return "MY CART"
         if (path.startsWith("/profile")) return "PROFILE"

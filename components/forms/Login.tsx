@@ -23,8 +23,10 @@ const api = axios.create({
 
 const LOGIN_CAMPAIGN_IMAGE =
   "https://cdn.cevonne.com/assets/images/ChatGPT%20Image%20Aug%2010%2C%202026%2C%2011_50_49%20AM.png";
+const FALLBACK_CAMPAIGN_IMAGE = "/assets/banners/the_campaign.jpg";
 
 export default function Login({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  const [campaignImg, setCampaignImg] = useState(LOGIN_CAMPAIGN_IMAGE);
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
@@ -158,12 +160,13 @@ export default function Login({ className, ...props }: React.HTMLAttributes<HTML
       {/* Left side: Editorial Brand Campaign Image */}
       <aside className="relative hidden lg:block overflow-hidden bg-[#b87537] min-h-[calc(100dvh-5rem)]">
         <Image
-          src={LOGIN_CAMPAIGN_IMAGE}
+          src={campaignImg}
           alt="Cevonne luxury lipstick collection"
           fill
           priority
           sizes="(min-width: 1024px) 50vw, 100vw"
           className="object-cover object-center"
+          onError={() => setCampaignImg(FALLBACK_CAMPAIGN_IMAGE)}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-black/10" />
         <div className="absolute bottom-10 left-10 right-10 text-white space-y-2">

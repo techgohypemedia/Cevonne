@@ -588,7 +588,7 @@ export default function CheckoutPage() {
                       Track Order Live
                     </Link>
                     <Link
-                      to="/collections"
+                      to="/"
                       className="inline-flex w-full items-center justify-center rounded-full border border-[var(--border)] bg-white px-4 py-2.5 text-xs font-semibold text-[var(--primary)] hover:bg-[var(--accent)] transition-all"
                     >
                       Continue Shopping

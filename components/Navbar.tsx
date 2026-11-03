@@ -235,6 +235,32 @@ const Navbar = () => {
                     </nav>
                   </div>
 
+                  {/* Shade Finder Match Quiz Banner */}
+                  <div>
+                    <Link
+                      to="/quiz"
+                      onClick={() => setMenuOpen(false)}
+                      className="group relative block overflow-hidden rounded-2xl bg-gradient-to-br from-[#2a0e2a] via-[#4b0d4b] to-neutral-900 p-4 text-white shadow-md transition-all hover:shadow-lg hover:scale-[1.01]"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="inline-flex items-center rounded-full bg-white/15 backdrop-blur-md px-2.5 py-1 text-[9px] font-semibold uppercase tracking-wider text-rose-200 border border-white/20">
+                          Shade Finder Quiz
+                        </span>
+                        <span className="text-[11px] font-medium text-rose-200 group-hover:text-white transition-colors">
+                          30 Sec &rarr;
+                        </span>
+                      </div>
+                      <div className="mt-3">
+                        <h4 className="text-base font-serif font-semibold tracking-wide text-white">
+                          Find Your Signature Shade
+                        </h4>
+                        <p className="mt-1 text-xs text-neutral-300 leading-relaxed font-sans">
+                          Take our 4-question match quiz &amp; unlock a 10% VIP gift.
+                        </p>
+                      </div>
+                    </Link>
+                  </div>
+
                   {/* High-Fashion AR Try-On Banner */}
                   <div>
                     <Link
@@ -361,6 +387,17 @@ const Navbar = () => {
 
           {/* Right: Call + icons */}
           <div className="flex items-center gap-4 md:gap-6">
+            <Link
+              to="/quiz"
+              className={`hidden md:inline-flex items-center text-xs font-semibold uppercase tracking-wider px-3.5 py-1.5 rounded-full border transition-all duration-300 ${
+                solid
+                  ? "border-neutral-200 text-neutral-800 hover:bg-neutral-100 hover:border-neutral-300"
+                  : "border-white/30 text-white hover:bg-white/10"
+              }`}
+            >
+              Shade Quiz
+            </Link>
+
             <a
               href="https://wa.me/917061009669"
               target="_blank"
