@@ -68,7 +68,12 @@ const TRACKING_STEPS: Array<{
 
 export default function TrackOrderPage() {
   const searchParams = useSearchParams();
-  const initialOrder = searchParams.get("order") || "";
+  const initialOrder =
+    searchParams.get("order") ||
+    searchParams.get("orderId") ||
+    searchParams.get("orderNumber") ||
+    searchParams.get("id") ||
+    "";
   const [orderQuery, setOrderQuery] = useState(initialOrder);
   const [activeOrderNumber, setActiveOrderNumber] = useState(initialOrder);
   const [order, setOrder] = useState<any>(null);
