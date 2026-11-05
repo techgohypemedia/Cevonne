@@ -8,7 +8,7 @@ import {
   Play,
   RefreshCw,
   ShieldAlert,
-  Sparkles,
+  ShieldCheck,
   Workflow,
 } from "lucide-react";
 import Link from "next/link";
@@ -88,16 +88,16 @@ export default function NewN8nAutomationFlow({
   const stats = [
     {
       label: "Workflows",
-      value: "3",
-      helper: "Content Automation Series",
+      value: "11",
+      helper: "Active Automation Suite",
       icon: <Workflow className="h-5 w-5" />,
       toneClass: "bg-primary",
     },
     {
       label: "Healthy",
-      value: pendingCount > 0 ? "2" : "3",
+      value: pendingCount > 0 ? "10" : "11",
       helper: "Passing without intervention",
-      icon: <Sparkles className="h-5 w-5" />,
+      icon: <ShieldCheck className="h-5 w-5" />,
       toneClass: "bg-emerald-300",
     },
     {
@@ -127,12 +127,12 @@ export default function NewN8nAutomationFlow({
     <WorkflowDashboardShell
       eyebrow="CEVONNE ADMIN"
       title="Workflow Dashboard"
-      description="One-page summaries for every workflow. Open a workflow to inspect its latest outcome and next safe action."
+      description="One-page summaries for every active automation. Inspect live outcomes, triggers, and safe control actions."
       badges={
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-800 text-xs font-semibold px-3 py-1">
             <span className="mr-1.5 size-2 rounded-full bg-emerald-500 animate-pulse" />
-            3 Workflows Active
+            11 Workflows Active
           </Badge>
         </div>
       }
@@ -179,7 +179,7 @@ export default function NewN8nAutomationFlow({
         ))}
       </div>
 
-      {/* 3 Workflow Cards Grid (Clicking navigates to dedicated page) */}
+      {/* 11 Workflows Sequential Grid (Workflow 1 to Workflow 11) */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {/* WORKFLOW 1 CARD */}
         <Card className="group gap-0 overflow-hidden rounded-[24px] border-border/60 bg-white py-0 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md flex flex-col justify-between">
@@ -192,10 +192,10 @@ export default function NewN8nAutomationFlow({
                 <span className="text-[11px] font-mono text-muted-foreground">Workflow 1</span>
               </div>
               <h3 className="font-serif text-xl leading-tight tracking-tight text-primary pt-1">
-                1. Cevonne Workflow 1 – Instagram Research & Trend Analysis
+                Workflow 1 – Instagram Trend Research
               </h3>
               <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
-                This workflow researches trending Instagram content related to lipstick/beauty. It collects posts, analyzes their engagement and relevance, evaluates the content using AI, and selects the top-performing content ideas for further processing.
+                Researches trending Instagram content related to lipstick and cosmetics via Apify. Uses mathematical engagement filtering and GPT-4.1-mini vision analysis to select top ideas for content production.
               </p>
             </div>
 
@@ -242,10 +242,10 @@ export default function NewN8nAutomationFlow({
                 <span className="text-[11px] font-mono text-muted-foreground">Workflow 2</span>
               </div>
               <h3 className="font-serif text-xl leading-tight tracking-tight text-primary pt-1">
-                2. Cevonne Workflow 2 – AI Content Generation
+                Workflow 2 – AI Content Generation Studio
               </h3>
               <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
-                This workflow takes the selected research content and converts it into original Cevonne-style content using AI. It generates the required creative images, captions, concepts, and supports both single-image and carousel content.
+                Transforms top research into luxury Cevonne-branded visuals and captions. Queries product shade data from PostgreSQL and generates high-res assets with GPT image mini.
               </p>
             </div>
 
@@ -284,10 +284,10 @@ export default function NewN8nAutomationFlow({
                 <span className="text-[11px] font-mono text-muted-foreground">Workflow 3</span>
               </div>
               <h3 className="font-serif text-xl leading-tight tracking-tight text-primary pt-1">
-                3. Cevonne Workflow 3 – Content Publishing & Storage
+                Workflow 3 – Content Publishing & Storage
               </h3>
               <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
-                This workflow handles the final content preparation and storage process. Generated images are uploaded to Cloudflare R2, their metadata is stored in Supabase, and approved content is prepared for publishing through the execution flow.
+                Uploads approved creative assets to Cloudflare R2 bucket (cdn.cevonne.com), records verified publishing metadata in Supabase, and runs compliance checks before public distribution.
               </p>
             </div>
 
@@ -314,9 +314,356 @@ export default function NewN8nAutomationFlow({
             </div>
           </CardContent>
         </Card>
+
+        {/* WORKFLOW 4 CARD */}
+        <Card className="group gap-0 overflow-hidden rounded-[24px] border-border/60 bg-white py-0 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md flex flex-col justify-between">
+          <CardContent className="flex h-full flex-col gap-4 p-5">
+            <div className="min-w-0 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-800 text-[10px]">
+                  Healthy · Token Verified
+                </Badge>
+                <span className="text-[11px] font-mono text-muted-foreground">Workflow 4</span>
+              </div>
+              <h3 className="font-serif text-xl leading-tight tracking-tight text-primary pt-1">
+                Workflow 4 – Meta & WhatsApp Health Monitor
+              </h3>
+              <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+                Runs automated diagnostics every 6 hours against Meta Graph API v26.0. Validates Meta system user tokens, WhatsApp Cloud API phone quality rating (GREEN), and tier messaging limits.
+              </p>
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Interval</p>
+                <p className="mt-1 text-xs font-medium text-foreground">Every 6 Hours / On-Demand</p>
+              </div>
+              <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Protection</p>
+                <p className="mt-1 line-clamp-2 text-xs font-medium text-foreground">
+                  Early token expiry & rate limit alerts.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-auto pt-2">
+              <Button asChild variant="outline" className="h-9 w-full rounded-full border-border/70 bg-white px-3 text-xs shadow-none hover:bg-neutral-50">
+                <Link href="/dashboard/n8n-automations/workflow-4">
+                  View Details
+                  <ArrowRight className="ml-1 size-3.5" />
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* WORKFLOW 5 CARD */}
+        <Card className="group gap-0 overflow-hidden rounded-[24px] border-border/60 bg-white py-0 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md flex flex-col justify-between">
+          <CardContent className="flex h-full flex-col gap-4 p-5">
+            <div className="min-w-0 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-800 text-[10px]">
+                  Active · Webhook Ready
+                </Badge>
+                <span className="text-[11px] font-mono text-muted-foreground">Workflow 5</span>
+              </div>
+              <h3 className="font-serif text-xl leading-tight tracking-tight text-primary pt-1">
+                Workflow 5 – Messaging + Quiz + Cart Recovery Router
+              </h3>
+              <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+                Omnichannel customer router handling WhatsApp lipstick shade quiz intake with 10% VIP coupon delivery, 30-minute cart abandonment recovery with purchase suppression, and STOP compliance.
+              </p>
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Mode</p>
+                <p className="mt-1 text-xs font-medium text-foreground">Interactive Router</p>
+              </div>
+              <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Guardrail</p>
+                <p className="mt-1 line-clamp-2 text-xs font-medium text-foreground">
+                  Auto-suppress on purchase & STOP opt-out.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-auto pt-2">
+              <Button asChild variant="outline" className="h-9 w-full rounded-full border-border/70 bg-white px-3 text-xs shadow-none hover:bg-neutral-50">
+                <Link href="/dashboard/n8n-automations/workflow-5">
+                  View Details
+                  <ArrowRight className="ml-1 size-3.5" />
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* WORKFLOW 6 CARD */}
+        <Card className="group gap-0 overflow-hidden rounded-[24px] border-border/60 bg-white py-0 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md flex flex-col justify-between">
+          <CardContent className="flex h-full flex-col gap-4 p-5">
+            <div className="min-w-0 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Badge variant="outline" className="border-indigo-300 bg-indigo-50 text-indigo-800 text-[10px]">
+                  Scheduled · Daily 9 AM
+                </Badge>
+                <span className="text-[11px] font-mono text-muted-foreground">Workflow 6</span>
+              </div>
+              <h3 className="font-serif text-xl leading-tight tracking-tight text-primary pt-1">
+                Workflow 6 – Discount Offer + Ad Coupon Health & Expiry Monitor
+              </h3>
+              <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+                Daily 9 AM ad coupon guardian verifying website discount coupon health against paid ad campaigns. Flags expiring promo codes, low usage margins, and protects ad spend from broken voucher codes.
+              </p>
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Schedule</p>
+                <p className="mt-1 text-xs font-medium text-foreground">Daily at 9:00 AM</p>
+              </div>
+              <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Target</p>
+                <p className="mt-1 line-clamp-2 text-xs font-medium text-foreground">
+                  Preventing ad waste on broken offers.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-auto pt-2">
+              <Button asChild variant="outline" className="h-9 w-full rounded-full border-border/70 bg-white px-3 text-xs shadow-none hover:bg-neutral-50">
+                <Link href="/dashboard/n8n-automations/workflow-6">
+                  View Details
+                  <ArrowRight className="ml-1 size-3.5" />
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* WORKFLOW 7 CARD */}
+        <Card className="group gap-0 overflow-hidden rounded-[24px] border-border/60 bg-white py-0 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md flex flex-col justify-between">
+          <CardContent className="flex h-full flex-col gap-4 p-5">
+            <div className="min-w-0 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-800 text-[10px]">
+                  Live Sentinel · Instant
+                </Badge>
+                <span className="text-[11px] font-mono text-muted-foreground">Workflow 7</span>
+              </div>
+              <h3 className="font-serif text-xl leading-tight tracking-tight text-primary pt-1">
+                Workflow 7 – Real-Time Low Stock Alert
+              </h3>
+              <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+                Real-time stock sentinel monitoring luxury inventory balances. Dispatches instant high-priority WhatsApp and formatted HTML email alerts to warehouse staff when any shade breaches safety stock limits.
+              </p>
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Trigger</p>
+                <p className="mt-1 text-xs font-medium text-foreground">Instant on Order / Restock</p>
+              </div>
+              <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Channels</p>
+                <p className="mt-1 line-clamp-2 text-xs font-medium text-foreground">
+                  WhatsApp Cloud + Emergency Email.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-auto pt-2">
+              <Button asChild variant="outline" className="h-9 w-full rounded-full border-border/70 bg-white px-3 text-xs shadow-none hover:bg-neutral-50">
+                <Link href="/dashboard/n8n-automations/workflow-7">
+                  View Details
+                  <ArrowRight className="ml-1 size-3.5" />
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* WORKFLOW 8 CARD */}
+        <Card className="group gap-0 overflow-hidden rounded-[24px] border-border/60 bg-white py-0 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md flex flex-col justify-between">
+          <CardContent className="flex h-full flex-col gap-4 p-5">
+            <div className="min-w-0 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-800 text-[10px]">
+                  Verified Live · Webhook Active
+                </Badge>
+                <span className="text-[11px] font-mono text-muted-foreground">Workflow 8</span>
+              </div>
+              <h3 className="font-serif text-xl leading-tight tracking-tight text-primary pt-1">
+                Workflow 8 – UGC Creator Proof & Auto Permission (Full Suite)
+              </h3>
+              <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+                Autonomous UGC creator suite receiving Instagram tags, verifying media on Meta Graph, saving to Supabase, sending official permission request DMs, and logging creator consent.
+              </p>
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Status</p>
+                <p className="mt-1 text-xs font-medium text-emerald-700 font-semibold">Live Tested & Verified</p>
+              </div>
+              <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Storage</p>
+                <p className="mt-1 line-clamp-2 text-xs font-medium text-foreground">
+                  Supabase cevonne_ugc_mentions
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-auto pt-2">
+              <Button asChild variant="outline" className="h-9 w-full rounded-full border-border/70 bg-white px-3 text-xs shadow-none hover:bg-neutral-50">
+                <Link href="/dashboard/n8n-automations/workflow-8">
+                  View Details
+                  <ArrowRight className="ml-1 size-3.5" />
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* WORKFLOW 9 CARD */}
+        <Card className="group gap-0 overflow-hidden rounded-[24px] border-border/60 bg-white py-0 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md flex flex-col justify-between">
+          <CardContent className="flex h-full flex-col gap-4 p-5">
+            <div className="min-w-0 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Badge variant="outline" className="border-indigo-300 bg-indigo-50 text-indigo-800 text-[10px]">
+                  Scheduled · Daily 9 AM
+                </Badge>
+                <span className="text-[11px] font-mono text-muted-foreground">Workflow 9</span>
+              </div>
+              <h3 className="font-serif text-xl leading-tight tracking-tight text-primary pt-1">
+                Workflow 9 – Meta Ads Daily Performance & ROAS Monitor
+              </h3>
+              <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+                Daily 9 AM Meta Marketing API auditor pulling live campaign ROAS, spend, and CPA. Evaluates ad performance using OpenAI strategic guidance and generates budget scaling suggestions.
+              </p>
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Schedule</p>
+                <p className="mt-1 text-xs font-medium text-foreground">Daily at 9:00 AM</p>
+              </div>
+              <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Intelligence</p>
+                <p className="mt-1 line-clamp-2 text-xs font-medium text-foreground">
+                  OpenAI ROAS & creative fatigue advisor.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-auto pt-2">
+              <Button asChild variant="outline" className="h-9 w-full rounded-full border-border/70 bg-white px-3 text-xs shadow-none hover:bg-neutral-50">
+                <Link href="/dashboard/n8n-automations/workflow-9">
+                  View Details
+                  <ArrowRight className="ml-1 size-3.5" />
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* WORKFLOW 10 CARD */}
+        <Card className="group gap-0 overflow-hidden rounded-[24px] border-border/60 bg-white py-0 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md flex flex-col justify-between">
+          <CardContent className="flex h-full flex-col gap-4 p-5">
+            <div className="min-w-0 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Badge variant="outline" className="border-indigo-300 bg-indigo-50 text-indigo-800 text-[10px]">
+                  Scheduled · Fri 10 AM
+                </Badge>
+                <span className="text-[11px] font-mono text-muted-foreground">Workflow 10</span>
+              </div>
+              <h3 className="font-serif text-xl leading-tight tracking-tight text-primary pt-1">
+                Workflow 10 – SEO + CRO
+              </h3>
+              <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+                Weekly Friday 10 AM search visibility and conversion optimizer. Audits Google Search Console impressions, click trends, and GA4 checkout drop-offs to generate CRO recommendations.
+              </p>
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Schedule</p>
+                <p className="mt-1 text-xs font-medium text-foreground">Every Friday 10:00 AM</p>
+              </div>
+              <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Deliverable</p>
+                <p className="mt-1 line-clamp-2 text-xs font-medium text-foreground">
+                  GSC search query & CRO audit report.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-auto pt-2">
+              <Button asChild variant="outline" className="h-9 w-full rounded-full border-border/70 bg-white px-3 text-xs shadow-none hover:bg-neutral-50">
+                <Link href="/dashboard/n8n-automations/workflow-10">
+                  View Details
+                  <ArrowRight className="ml-1 size-3.5" />
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* WORKFLOW 11 CARD */}
+        <Card className="group gap-0 overflow-hidden rounded-[24px] border-border/60 bg-white py-0 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md flex flex-col justify-between">
+          <CardContent className="flex h-full flex-col gap-4 p-5">
+            <div className="min-w-0 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Badge variant="outline" className="border-indigo-300 bg-indigo-50 text-indigo-800 text-[10px]">
+                  Scheduled · Mon 10 AM
+                </Badge>
+                <span className="text-[11px] font-mono text-muted-foreground">Workflow 11</span>
+              </div>
+              <h3 className="font-serif text-xl leading-tight tracking-tight text-primary pt-1">
+                Workflow 11 – Monday Founder Weekly Digest
+              </h3>
+              <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+                Monday morning executive intelligence summarizing weekly gross revenue, order count, average order value (AOV), top performing lipstick shades, and low-inventory warnings.
+              </p>
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Frequency</p>
+                <p className="mt-1 text-xs font-medium text-foreground">Every Monday 10:00 AM</p>
+              </div>
+              <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Deliverable</p>
+                <p className="mt-1 line-clamp-2 text-xs font-medium text-foreground">
+                  Founder WhatsApp & executive digest.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-auto pt-2">
+              <Button asChild variant="outline" className="h-9 w-full rounded-full border-border/70 bg-white px-3 text-xs shadow-none hover:bg-neutral-50">
+                <Link href="/dashboard/n8n-automations/workflow-11">
+                  View Details
+                  <ArrowRight className="ml-1 size-3.5" />
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Embedded Workflows (e.g. Core Platform Workflows G1–G12) */}
+      {/* Visual divider separating Modern Custom Suite from Core Platform */}
+      <div className="pt-8">
+        <div className="flex items-center gap-3">
+          <div className="h-px flex-1 bg-border/60" />
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Core Platform Automations (G1–G12)
+          </span>
+          <div className="h-px flex-1 bg-border/60" />
+        </div>
+      </div>
+
+      {/* Embedded Workflows (e.g. Core Platform Workflows G1–G12 - Untouched) */}
       {children}
     </WorkflowDashboardShell>
   );

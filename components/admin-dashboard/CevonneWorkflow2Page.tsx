@@ -11,7 +11,7 @@ import {
   Image as ImageIcon,
   Loader2,
   RefreshCw,
-  Sparkles,
+  Layers,
   ThumbsDown,
   ThumbsUp,
 } from "lucide-react";
@@ -282,7 +282,7 @@ export default function CevonneWorkflow2Page() {
                     ) : (
                       <div className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-neutral-900 via-neutral-800 to-amber-950 p-6 text-center text-white">
                         <div className="rounded-full bg-white/10 p-3 backdrop-blur-sm mb-2">
-                          <Sparkles className="size-6 text-amber-300" />
+                          <Layers className="size-6 text-amber-300" />
                         </div>
                         <p className="font-serif text-xs font-semibold tracking-wide text-white/95 line-clamp-1">
                           {item.content_concept || "Cevonne AI Visual Asset"}

@@ -19,7 +19,6 @@ import {
   Radio,
   RefreshCw,
   Search,
-  Sparkles,
   TrendingUp,
 } from "lucide-react";
 import Link from "next/link";
@@ -442,7 +441,7 @@ export default function CevonneWorkflow1Page() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="font-serif text-base font-semibold text-primary flex items-center gap-2">
-                    <Sparkles className="size-4 text-amber-500" />
+                    <CheckCircle2 className="size-4 text-emerald-600" />
                     Selected Candidate Concepts Passed to Workflow 2
                   </h4>
                   <Button
