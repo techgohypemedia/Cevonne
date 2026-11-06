@@ -1,7 +1,7 @@
-import G3ConsentAttributionPage from "@/components/admin-dashboard/G3ConsentAttributionPage";
+import CevonneWorkflow12Page from "@/components/admin-dashboard/CevonneWorkflow12Page";
 
 export const dynamic = "force-dynamic";
 
 export default function Page() {
-  return <G3ConsentAttributionPage />;
+  return <CevonneWorkflow12Page />;
 }

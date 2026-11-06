@@ -88,14 +88,14 @@ export default function NewN8nAutomationFlow({
   const stats = [
     {
       label: "Workflows",
-      value: "11",
+      value: "12",
       helper: "Active Automation Suite",
       icon: <Workflow className="h-5 w-5" />,
       toneClass: "bg-primary",
     },
     {
       label: "Healthy",
-      value: pendingCount > 0 ? "10" : "11",
+      value: pendingCount > 0 ? "11" : "12",
       helper: "Passing without intervention",
       icon: <ShieldCheck className="h-5 w-5" />,
       toneClass: "bg-emerald-300",
@@ -132,7 +132,7 @@ export default function NewN8nAutomationFlow({
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-800 text-xs font-semibold px-3 py-1">
             <span className="mr-1.5 size-2 rounded-full bg-emerald-500 animate-pulse" />
-            11 Workflows Active
+            12 Workflows Active
           </Badge>
         </div>
       }
@@ -413,7 +413,7 @@ export default function NewN8nAutomationFlow({
                 Workflow 6 – Discount Offer + Ad Coupon Health & Expiry Monitor
               </h3>
               <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
-                Daily 9 AM ad coupon guardian verifying website discount coupon health against paid ad campaigns. Flags expiring promo codes, low usage margins, and protects ad spend from broken voucher codes.
+                Daily 9 AM coupon & margin sentinel enforcing 50% discount ceiling, Founder Approval Gate (&gt;50%), ₹599 lipstick price floor, and automated WhatsApp alerts for expiring or broken promo codes.
               </p>
             </div>
 
@@ -423,9 +423,9 @@ export default function NewN8nAutomationFlow({
                 <p className="mt-1 text-xs font-medium text-foreground">Daily at 9:00 AM</p>
               </div>
               <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Target</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Protection</p>
                 <p className="mt-1 line-clamp-2 text-xs font-medium text-foreground">
-                  Preventing ad waste on broken offers.
+                  50% Ceiling + Founder Approval + ₹599 Margin Floor
                 </p>
               </div>
             </div>
@@ -643,6 +643,48 @@ export default function NewN8nAutomationFlow({
             <div className="mt-auto pt-2">
               <Button asChild variant="outline" className="h-9 w-full rounded-full border-border/70 bg-white px-3 text-xs shadow-none hover:bg-neutral-50">
                 <Link href="/dashboard/n8n-automations/workflow-11">
+                  View Details
+                  <ArrowRight className="ml-1 size-3.5" />
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* WORKFLOW 12 CARD */}
+        <Card className="group gap-0 overflow-hidden rounded-[24px] border-border/60 bg-white py-0 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md flex flex-col justify-between">
+          <CardContent className="flex h-full flex-col gap-4 p-5">
+            <div className="min-w-0 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-800 text-[10px]">
+                  Working normally
+                </Badge>
+                <span className="text-[11px] font-mono text-muted-foreground">Workflow 12</span>
+              </div>
+              <h3 className="font-serif text-xl leading-tight tracking-tight text-primary pt-1">
+                Workflow 12 – Customer Consent & Campaign Attribution
+              </h3>
+              <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+                Centralized compliance ledger tracking explicit opt-ins from Quiz, Checkout, and VIP clubs. Enforces DPDP / Meta privacy guards and multi-touch influencer attribution before recovery messaging.
+              </p>
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Privacy Scope</p>
+                <p className="mt-1 text-xs font-medium text-foreground">DPDP & Meta WABA Gated</p>
+              </div>
+              <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Attribution</p>
+                <p className="mt-1 line-clamp-2 text-xs font-medium text-foreground">
+                  Multi-Touch Creator & Ad ROAS
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-auto pt-2">
+              <Button asChild variant="outline" className="h-9 w-full rounded-full border-border/70 bg-white px-3 text-xs shadow-none hover:bg-neutral-50">
+                <Link href="/dashboard/n8n-automations/workflow-12">
                   View Details
                   <ArrowRight className="ml-1 size-3.5" />
                 </Link>

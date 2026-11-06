@@ -587,12 +587,26 @@ exports.checkCouponStatus = async (req: any, res: any, next: any) => {
 
       const isActive = discount.status === "ACTIVE" && !isExpired && !notStarted && !limitReached;
 
+      // Rules 1 & 2: Margin and extreme discount safety check (with Founder Approval Gate)
+      const dValue = Number(discount.discount_value || 0);
+      const isPercent = discount.discount_type === "PERCENTAGE" || discount.discount_type === "PERCENT";
+      const isFixed = discount.discount_type === "FIXED_AMOUNT" || discount.discount_type === "FIXED";
+      const isFounderApproved = Boolean(
+        discount.notes && /\[?(FOUNDER_APPROVED|ADMIN_APPROVED|FOUNDER_OVERRIDE)\]?/i.test(discount.notes)
+      );
+      const isExtremePercent = isPercent && dValue > 50 && !isFounderApproved;
+      const isFloorBreached = isFixed && dValue > 700 && Number(discount.minimum_order_value || 0) < dValue + 599 && !isFounderApproved;
+
       let reason: string | null = null;
       if (!isActive) {
         if (discount.status !== "ACTIVE") reason = `Coupon status is ${discount.status}`;
         else if (isExpired) reason = "Coupon has expired";
         else if (notStarted) reason = "Coupon has not started yet";
         else if (limitReached) reason = "Coupon usage limit reached";
+      } else if (isExtremePercent) {
+        reason = `Margin warning: ${dValue}% discount exceeds 50% safety ceiling without Founder Approval`;
+      } else if (isFloorBreached) {
+        reason = `Margin warning: Flat ₹${dValue} discount breaches ₹599 price floor without minimum order protection or Founder Approval`;
       }
 
       return res.status(200).json({
@@ -606,13 +620,16 @@ exports.checkCouponStatus = async (req: any, res: any, next: any) => {
         endsAt: discount.ends_at,
         isExpired,
         limitReached,
+        isFounderApproved,
+        hasMarginRisk: isExtremePercent || isFloorBreached,
+        marginRiskReason: (isExtremePercent || isFloorBreached) ? reason : null,
         usedCount: discount.used_count,
         usageLimitTotal: discount.usage_limit_total,
         reason,
       });
     }
 
-    // Default mode: Return expiring or risky active coupons (expiring in next 48 hrs or limit nearly reached)
+    // Default mode: Return expiring, limit-reached, or margin-breached active coupons
     const activeDiscounts = await prisma.cevonne_discounts.findMany({
       where: {
         status: "ACTIVE",
@@ -627,13 +644,50 @@ exports.checkCouponStatus = async (req: any, res: any, next: any) => {
         status: true,
         used_count: true,
         usage_limit_total: true,
+        minimum_order_value: true,
+        notes: true,
       },
     });
 
     const expiringSoon: Array<any> = [];
     const limitReachedList: Array<any> = [];
+    const marginBreachedList: Array<any> = [];
 
     for (const d of activeDiscounts) {
+      const dValue = Number(d.discount_value || 0);
+      const isPercent = d.discount_type === "PERCENTAGE" || d.discount_type === "PERCENT";
+      const isFixed = d.discount_type === "FIXED_AMOUNT" || d.discount_type === "FIXED";
+      const isFounderApproved = Boolean(
+        d.notes && /\[?(FOUNDER_APPROVED|ADMIN_APPROVED|FOUNDER_OVERRIDE)\]?/i.test(d.notes)
+      );
+
+      // Rule 1: Anti-Extreme Discount / 50% Ceiling Guard (Ignored if Founder explicitly approved)
+      if (isPercent && dValue > 50 && !isFounderApproved) {
+        marginBreachedList.push({
+          code: d.code,
+          discountType: d.discount_type,
+          discountValue: dValue,
+          breachType: "PERCENTAGE_CEILING_BREACH",
+          reason: `${dValue}% discount exceeds 50% margin ceiling without Founder Approval authorization`,
+        });
+      }
+
+      // Rule 2: Minimum Price Floor & Margin Guard (Lipstick ₹599 Floor)
+      if (isFixed && dValue > 700 && !isFounderApproved) {
+        const minOrder = Number(d.minimum_order_value || 0);
+        if (minOrder < dValue + 599) {
+          marginBreachedList.push({
+            code: d.code,
+            discountType: d.discount_type,
+            discountValue: dValue,
+            minimumOrderValue: minOrder,
+            breachType: "FIXED_PRICE_FLOOR_BREACH",
+            reason: `Flat ₹${dValue} discount breaches ₹599 lipstick price floor without adequate minimum order (current min order: ₹${minOrder})`,
+          });
+        }
+      }
+
+      // Rule 3: Expiry & Limits Guard
       if (d.ends_at && new Date(d.ends_at) <= in48Hours) {
         const hoursLeft = Math.max(0, Math.round((new Date(d.ends_at).getTime() - now.getTime()) / (1000 * 60 * 60)));
         expiringSoon.push({
@@ -655,13 +709,14 @@ exports.checkCouponStatus = async (req: any, res: any, next: any) => {
       }
     }
 
-    const hasWarnings = expiringSoon.length > 0 || limitReachedList.length > 0;
+    const hasWarnings = expiringSoon.length > 0 || limitReachedList.length > 0 || marginBreachedList.length > 0;
 
     return res.status(200).json({
       hasWarnings,
       totalActiveCoupons: activeDiscounts.length,
       expiringSoon,
       limitReachedList,
+      marginBreachedList,
       checkedAt: now.toISOString(),
     });
   } catch (error) {

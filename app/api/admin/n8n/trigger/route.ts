@@ -82,6 +82,12 @@ const WORKFLOW_WEBHOOK_MAP: Record<
     envUrl: process.env.N8N_G11_WEEKLY_DIGEST_URL,
     event: "FOUNDER_WEEKLY_DIGEST_GEN",
   },
+  12: {
+    name: "Workflow 12 – Customer Consent & Campaign Attribution",
+    path: "cevonne/g3-consent-attribution",
+    envUrl: process.env.N8N_G3_CONSENT_ATTRIBUTION_URL,
+    event: "CONSENT_ATTRIBUTION_SYNC",
+  },
 };
 
 export async function GET(request: Request) {

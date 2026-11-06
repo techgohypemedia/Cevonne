@@ -170,6 +170,48 @@ export const discountFormSchema = z
           path: ["discountValue"],
           message: "Discount value must be greater than 0.",
         });
+      } else {
+        const numVal = Number(data.discountValue);
+        const isFounderApproved = Boolean(
+          data.notes && /\[?(FOUNDER_APPROVED|ADMIN_APPROVED|FOUNDER_OVERRIDE)\]?/i.test(data.notes)
+        );
+        const isLiveOrScheduled = data.status === "ACTIVE" || data.status === "SCHEDULED";
+
+        // Rule 1: Anti-Extreme Discount / 50% Ceiling Guard with Founder Approval Gate
+        // - In DRAFT status: Can be saved for review/proposal
+        // - In ACTIVE/SCHEDULED status: Requires explicit Founder/Admin approval in Notes
+        if (data.discountType === "PERCENTAGE" && numVal > 50) {
+          if (isLiveOrScheduled && !isFounderApproved) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ["discountValue"],
+              message: `Approval Required: Discounts above 50% (${numVal}%) cannot be activated directly. Save as DRAFT for review or add '[FOUNDER_APPROVED]' in Notes to authorize live release.`,
+            });
+          }
+        }
+
+        // Rule 2: Minimum Price Floor & Margin Guard for Fixed Discounts (Lipstick ₹599 Floor)
+        if (data.discountType === "FIXED_AMOUNT") {
+          const minOrder = Number(data.minimumOrderValue || 0);
+          if (numVal > 700) {
+            if (!minOrder || minOrder < numVal + 599) {
+              if (isLiveOrScheduled && !isFounderApproved) {
+                ctx.addIssue({
+                  code: z.ZodIssueCode.custom,
+                  path: ["discountValue"],
+                  message: `Approval Required: Flat discount of ₹${numVal} breaches ₹599 lipstick margin floor without minimum order (₹${Math.round(numVal + 599)}). Save as DRAFT or add '[FOUNDER_APPROVED]' in Notes to authorize.`,
+                });
+              }
+            }
+          }
+          if (minOrder > 0 && numVal >= minOrder) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ["minimumOrderValue"],
+              message: `Minimum order value (₹${minOrder}) must be strictly higher than the fixed discount amount (₹${numVal}).`,
+            });
+          }
+        }
       }
     }
 

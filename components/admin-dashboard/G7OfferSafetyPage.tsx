@@ -504,9 +504,9 @@ export default function G7OfferSafetyPage() {
 
   return (
     <WorkflowDashboardShell
-      eyebrow="Workflow detail"
-      title="G7 — Inventory + Offer Safety"
-      description="Verifies stock, discount, expiry, and proof before claims are used."
+      eyebrow="Workflow 6 detail"
+      title="Workflow 6 — Discount Offer + Ad Coupon Health & Expiry Monitor"
+      description="Verifies real-time stock, discount validity, 50% margin ceiling, ₹599 price floor, and proof before claims are used in ads."
       badges={headerBadges}
       actions={headerActions}
     >
