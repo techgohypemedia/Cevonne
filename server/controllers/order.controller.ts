@@ -630,24 +630,38 @@ exports.checkCouponStatus = async (req: any, res: any, next: any) => {
     }
 
     // Default mode: Return expiring, limit-reached, or margin-breached active coupons
-    const activeDiscounts = await prisma.cevonne_discounts.findMany({
-      where: {
-        status: "ACTIVE",
-        archived_at: null,
-      },
-      select: {
-        code: true,
-        discount_type: true,
-        discount_value: true,
-        starts_at: true,
-        ends_at: true,
-        status: true,
-        used_count: true,
-        usage_limit_total: true,
-        minimum_order_value: true,
-        notes: true,
-      },
-    });
+    const [activeDiscounts, draftDiscounts] = await Promise.all([
+      prisma.cevonne_discounts.findMany({
+        where: {
+          status: "ACTIVE",
+          archived_at: null,
+        },
+        select: {
+          code: true,
+          discount_type: true,
+          discount_value: true,
+          starts_at: true,
+          ends_at: true,
+          status: true,
+          used_count: true,
+          usage_limit_total: true,
+          minimum_order_value: true,
+          notes: true,
+        },
+      }),
+      prisma.cevonne_discounts.findMany({
+        where: {
+          status: "DRAFT",
+          archived_at: null,
+        },
+        select: {
+          code: true,
+          discount_type: true,
+          discount_value: true,
+          created_at: true,
+        },
+      }),
+    ]);
 
     const expiringSoon: Array<any> = [];
     const limitReachedList: Array<any> = [];
@@ -714,6 +728,8 @@ exports.checkCouponStatus = async (req: any, res: any, next: any) => {
     return res.status(200).json({
       hasWarnings,
       totalActiveCoupons: activeDiscounts.length,
+      draftsAwaitingApprovalCount: draftDiscounts.length,
+      draftsAwaitingApproval: draftDiscounts,
       expiringSoon,
       limitReachedList,
       marginBreachedList,

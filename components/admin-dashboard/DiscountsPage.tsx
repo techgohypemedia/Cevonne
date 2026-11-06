@@ -3149,6 +3149,33 @@ export default function DiscountsPage() {
                   ))}
                 </div>
 
+                {summary.draft > 0 ? (
+                  <div className="flex flex-col gap-3 rounded-[24px] border border-amber-300/80 bg-amber-50/90 p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-5">
+                    <div className="flex items-start gap-3">
+                      <div className="flex size-9 shrink-0 items-center justify-center rounded-full border border-amber-300 bg-amber-100 text-amber-900">
+                        <AlertTriangle className="size-4" />
+                      </div>
+                      <div className="space-y-0.5">
+                        <p className="font-serif text-base font-semibold text-amber-950">
+                          {summary.draft} {summary.draft === 1 ? "Coupon Draft" : "Coupon Drafts"} Awaiting Founder Approval
+                        </p>
+                        <p className="text-xs leading-relaxed text-amber-800/90">
+                          High-discount proposals (&gt;50%) or team drafts are queued for your review before going live.
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-9 shrink-0 rounded-full border-amber-300 bg-white px-4 text-xs font-semibold text-amber-950 hover:bg-amber-100"
+                      onClick={() => setStatusFilter("DRAFT")}
+                    >
+                      Review Drafts ({summary.draft})
+                    </Button>
+                  </div>
+                ) : null}
+
                 <div className="grid gap-6">
                   <div className="space-y-6">
                     <Card className="rounded-[28px] border-border/70 bg-white/90 shadow-sm">
