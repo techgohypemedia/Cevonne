@@ -78,6 +78,7 @@ export default function CevonneWorkflow7Page() {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [lowStockCount, setLowStockCount] = useState(0);
   const [adLowStockCount, setAdLowStockCount] = useState(0);
+  const [viewFilter, setViewFilter] = useState<"LOW_STOCK" | "ALL">("LOW_STOCK");
   const [lastCheckTime, setLastCheckTime] = useState<string>("Just now");
   const [alertResult, setAlertResult] = useState<LiveAlertResult | null>(null);
 
@@ -113,6 +114,7 @@ export default function CevonneWorkflow7Page() {
 
   const lowStockItems = items.filter((item) => item.isLowStock);
   const adWatchItems = items.filter((item) => item.isAdProduct);
+  const displayedItems = viewFilter === "LOW_STOCK" ? lowStockItems : items;
 
   const handleTriggerAlert = async (specificShadeId?: string) => {
     setTriggering(true);
@@ -348,18 +350,58 @@ export default function CevonneWorkflow7Page() {
 
         {/* Live Inventory Table */}
         <Card className="rounded-[28px] border-border/70 bg-white shadow-sm overflow-hidden">
-          <div className="p-6 border-b border-border/40 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div className="p-6 border-b border-border/40 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-              <h3 className="font-serif text-lg font-semibold text-primary">
-                Live Atelier Lipstick Shades Stock Watch
-              </h3>
+              <div className="flex items-center gap-2">
+                <h3 className="font-serif text-lg font-semibold text-primary">
+                  Live Atelier Lipstick Shades Stock Watch
+                </h3>
+                <Badge variant="outline" className="text-[11px] font-semibold border-amber-300 bg-amber-50 text-amber-900">
+                  {lowStockCount} Low Stock
+                </Badge>
+              </div>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Real-time stock quantities cross-referenced against active Meta Ad campaigns.
+                Real-time stock monitoring of shades below warning threshold (&lt; 10 units for active ads, &le; 5 units for standard).
               </p>
             </div>
-            <span className="text-[11px] font-mono text-muted-foreground">
-              Last synced: {lastCheckTime}
-            </span>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center rounded-full border border-border/70 bg-neutral-100/80 p-0.5">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setViewFilter("LOW_STOCK")}
+                  className={cn(
+                    "rounded-full h-8 px-3.5 text-xs font-semibold transition-all",
+                    viewFilter === "LOW_STOCK"
+                      ? "bg-white text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <AlertTriangle className="mr-1.5 size-3.5 text-amber-600" />
+                  Low Stock Only ({lowStockCount})
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setViewFilter("ALL")}
+                  className={cn(
+                    "rounded-full h-8 px-3.5 text-xs font-semibold transition-all",
+                    viewFilter === "ALL"
+                      ? "bg-white text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  All Shades ({items.length})
+                </Button>
+              </div>
+
+              <span className="text-[11px] font-mono text-muted-foreground pl-2 border-l border-border/60">
+                Last synced: {lastCheckTime}
+              </span>
+            </div>
           </div>
 
           <Table>
@@ -375,7 +417,18 @@ export default function CevonneWorkflow7Page() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {items.map((item) => (
+              {displayedItems.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                    <CheckCircle2 className="size-8 mx-auto text-emerald-500 mb-2" />
+                    <p className="font-medium text-foreground text-sm">All Atelier Shades Well-Stocked</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      No lipstick shades are currently below their warehouse alert thresholds.
+                    </p>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                displayedItems.map((item) => (
                 <TableRow key={item.id} className="border-border/40 hover:bg-neutral-50/50">
                   <TableCell className="text-xs">
                     <div className="flex items-center gap-2.5">
@@ -452,7 +505,7 @@ export default function CevonneWorkflow7Page() {
                     </Button>
                   </TableCell>
                 </TableRow>
-              ))}
+              )))}
             </TableBody>
           </Table>
         </Card>
