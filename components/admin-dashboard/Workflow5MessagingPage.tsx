@@ -321,21 +321,21 @@ export default function Workflow5MessagingPage() {
                   ) : (
                     recentEvents.map((row) => (
                       <TableRow key={row.id} className="border-border/40 hover:bg-neutral-50/60">
-                        <TableCell className="pl-6 text-xs whitespace-nowrap text-muted-foreground">
+                        <TableCell className="pl-6 py-3.5 text-xs whitespace-nowrap align-top text-muted-foreground">
                           {formatTime(row.time)}
                         </TableCell>
-                        <TableCell className="text-xs">
+                        <TableCell className="py-3.5 text-xs align-top">
                           <Badge variant="outline" className={cn("text-[11px]", statusBadgeTone(row.status))}>
                             {row.status}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-xs text-foreground max-w-xs">
+                        <TableCell className="py-3.5 text-xs text-foreground max-w-[280px] whitespace-normal break-words align-top leading-relaxed">
                           {row.whatHappened}
                         </TableCell>
-                        <TableCell className="text-xs text-muted-foreground max-w-xs">
+                        <TableCell className="py-3.5 text-xs text-muted-foreground max-w-[260px] whitespace-normal break-words align-top leading-relaxed">
                           {row.actionNeeded}
                         </TableCell>
-                        <TableCell className="pr-6 text-xs text-muted-foreground font-mono">
+                        <TableCell className="pr-6 py-3.5 text-xs text-muted-foreground font-mono max-w-[200px] whitespace-normal break-words align-top leading-relaxed">
                           {row.details}
                         </TableCell>
                       </TableRow>
