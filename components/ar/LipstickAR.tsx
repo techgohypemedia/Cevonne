@@ -1,6 +1,8 @@
 "use client";
 
 import { useRef, useState, useEffect, useMemo } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import { toast } from "sonner";
 
@@ -1179,6 +1181,8 @@ export default function VirtualTryOn() {
 
 
 
+  const router = useRouter();
+
   // Camera consent modal
 
   const [showConsent, setShowConsent] = useState(true);
@@ -1208,6 +1212,12 @@ export default function VirtualTryOn() {
     setConsentDeclined(true);
 
     setShowConsent(false);
+
+    if (window.history.length > 1) {
+      router.back();
+    } else {
+      router.push("/");
+    }
 
   };
 
@@ -1554,6 +1564,12 @@ export default function VirtualTryOn() {
     setError("");
 
     setCompareEnabled(false);
+
+    if (window.history.length > 1) {
+      router.back();
+    } else {
+      router.push("/");
+    }
 
   }
 
@@ -3076,31 +3092,41 @@ export default function VirtualTryOn() {
 
         {consentAccepted && !showConsent && !snapshot && (
 
-          <div className="absolute top-0 left-0 right-0 z-40 flex justify-between items-start p-6 pt-[calc(1.5rem+env(safe-area-inset-top))] bg-gradient-to-b from-black/50 to-transparent pointer-events-none">
+          <div className="absolute top-0 left-0 right-0 z-40 flex justify-between items-center p-6 pt-[calc(1.5rem+env(safe-area-inset-top))] bg-gradient-to-b from-black/60 to-transparent pointer-events-none">
 
-            <div className="text-xs font-bold tracking-[0.3em] uppercase text-white/90 drop-shadow-md pointer-events-auto">
+            {/* Left: Brand Logo + AR Label (Clickable -> Home) */}
+            <Link
+              href="/"
+              className="pointer-events-auto flex items-center gap-3 group transition-opacity hover:opacity-80"
+              title="Return to Cevonne Home"
+            >
+              <img
+                src="/logo.svg?v=white"
+                alt="Cevonne"
+                className="h-5 md:h-6 w-auto object-contain filter invert brightness-0"
+              />
+              <span className="text-[10px] md:text-xs font-semibold tracking-[0.3em] uppercase text-white/80 border-l border-white/30 pl-3">
+                AR Studio
+              </span>
+            </Link>
 
-              Cevonne AR
-
-            </div>
-
-
-
+            {/* Right: Back / Close button (Goes back or Home) */}
             <button
 
               type="button"
 
               onClick={handleExit}
 
-              className="pointer-events-auto w-10 h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white flex items-center justify-center hover:bg-white/20 transition-colors"
+              className="pointer-events-auto flex items-center gap-2 px-3.5 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/20 transition-all shadow-md group"
 
-              aria-label="Close"
+              aria-label="Back to previous page"
+              title="Back"
 
             >
 
               <svg
 
-                className="w-5 h-5"
+                className="w-4 h-4 transition-transform group-hover:-translate-x-0.5"
 
                 viewBox="0 0 24 24"
 
@@ -3108,7 +3134,7 @@ export default function VirtualTryOn() {
 
                 stroke="currentColor"
 
-                strokeWidth="1.5"
+                strokeWidth="2"
 
               >
 
@@ -3117,6 +3143,10 @@ export default function VirtualTryOn() {
                 <line x1="6" y1="6" x2="18" y2="18" />
 
               </svg>
+
+              <span className="text-xs uppercase tracking-wider font-medium text-white/90">
+                Close
+              </span>
 
             </button>
 
