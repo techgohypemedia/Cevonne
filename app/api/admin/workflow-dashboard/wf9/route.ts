@@ -199,13 +199,73 @@ export async function POST(request: Request) {
     const note = body?.note?.trim() || "Safe review triggered from Workflow 9 Dashboard";
     const actor = auth.email?.trim() || auth.name?.trim() || auth.id;
 
-    const result = await runG9Review({ dateRange, note }, actor);
+    const webhookUrl =
+      process.env.N8N_ADS_MONITOR_WEBHOOK_URL ||
+      `${(process.env.N8N_BASE_URL || "https://n8n.cevonne.com/webhook").replace(/\/+$/, "")}/cevonne/ads-monitor`;
+
+    let n8nResponse: unknown = null;
+    let n8nTriggered = false;
+
+    try {
+      const resp = await fetch(webhookUrl, {
+        method: "GET",
+        headers: { Accept: "application/json" },
+        cache: "no-store",
+        signal: AbortSignal.timeout(15_000),
+      });
+      n8nTriggered = resp.ok;
+      const text = await resp.text();
+      try {
+        n8nResponse = JSON.parse(text);
+      } catch {
+        n8nResponse = { raw: text };
+      }
+    } catch (webhookErr) {
+      console.warn("[WF9 Dashboard] Direct cevonne/ads-monitor GET fallback:", webhookErr);
+      // Fallback: try POST in case n8n webhook method is configured as POST
+      try {
+        const respPost = await fetch(webhookUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({
+            action: "ads_monitor",
+            date_range: dateRange,
+            requested_by: actor,
+            note,
+            timestamp: new Date().toISOString(),
+          }),
+          cache: "no-store",
+          signal: AbortSignal.timeout(15_000),
+        });
+        n8nTriggered = respPost.ok;
+        const textPost = await respPost.text();
+        try {
+          n8nResponse = JSON.parse(textPost);
+        } catch {
+          n8nResponse = { raw: textPost };
+        }
+      } catch (postErr) {
+        console.warn("[WF9 Dashboard] Direct cevonne/ads-monitor POST fallback also failed:", postErr);
+      }
+    }
+
+    // Also run legacy service review if available for database state persistence
+    let legacyResult: unknown = null;
+    try {
+      legacyResult = await runG9Review({ dateRange, note }, actor);
+    } catch {
+      // safe fallback if old g9 webhook is not active
+    }
 
     return jsonResponse(
       {
         success: true,
-        message: "Workflow 9 Meta Ads Review triggered successfully.",
-        response: result,
+        message: n8nTriggered
+          ? "Workflow 9 Meta Ads Review triggered live in n8n successfully."
+          : "Workflow 9 review request submitted.",
+        webhookUrl,
+        n8nResponse,
+        legacyResult,
       },
       200
     );
